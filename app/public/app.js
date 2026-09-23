@@ -1,68 +1,14 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  custom,
-  defineChain,
-  formatUnits,
-  http,
-  parseUnits,
-  getAddress,
-} from "https://esm.sh/viem@2.56.8";
-import { abi } from "/abi.js";
+import { createWalletClient, custom, parseUnits, getAddress } from "https://esm.sh/viem@2.56.8";
+import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, loadBounties, statusPill, totals, fillTitles } from "/common.js";
 
-const $ = (id) => document.getElementById(id);
-const ZERO = "0x0000000000000000000000000000000000000000";
-
-const cfg = await fetch("/api/config").then((r) => r.json());
 const origin = location.origin;
-const chain = defineChain({
-  id: cfg.chainId,
-  name: "Arc",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: [cfg.rpc] } },
-  blockExplorers: { default: { name: "Arcscan", url: cfg.explorer } },
-});
-const pub = createPublicClient({ chain, transport: http(cfg.rpc) });
-const deployed = cfg.contract && cfg.contract !== ZERO;
-const tag = cfg.workflowRef.split("@refs/tags/")[1] ?? cfg.workflowRef.split("@")[1];
-
 let account = null;
 
-// ---------------------------------------------------------------------------------------------
-// helpers
-
-const usd = (wei, dp = 2) => {
-  const n = Number(formatUnits(wei, 18));
-  return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
-};
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const toast = (msg) => {
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toast.h);
-  toast.h = setTimeout(() => t.classList.remove("show"), 2200);
-};
 const status = (el, msg, kind = "") => {
   el.className = `status ${kind}`;
   el.innerHTML = msg;
 };
 const txLink = (hash) => `<a href="${cfg.explorer}/tx/${hash}" target="_blank" rel="noopener">${hash.slice(0, 10)}…</a>`;
-
-async function gh(path) {
-  const key = `gh:${path}`;
-  try {
-    const hit = sessionStorage.getItem(key);
-    if (hit) return JSON.parse(hit);
-  } catch {}
-  const r = await fetch(`https://api.github.com/${path}`, { headers: { accept: "application/vnd.github+json" } });
-  if (!r.ok) throw new Error(r.status === 404 ? "not found on GitHub" : `GitHub API ${r.status}`);
-  const data = await r.json();
-  try {
-    sessionStorage.setItem(key, JSON.stringify(data));
-  } catch {}
-  return data;
-}
 
 function newFileUrl(repo, branch, filename, value) {
   const q = new URLSearchParams({ filename, value });
@@ -153,72 +99,34 @@ async function loadBoard() {
   $("contract-link").textContent = `${cfg.contract.slice(0, 8)}…${cfg.contract.slice(-6)} ↗`;
   $("contract-link").href = `${cfg.explorer}/address/${cfg.contract}`;
 
-  const [ids, data, names] = await pub.readContract({ address: cfg.contract, abi, functionName: "listBounties", args: [0n, 100n] });
-  const now = BigInt(Math.floor(Date.now() / 1000));
+  const bounties = await loadBounties();
+  const t = totals(bounties);
+  $("s-open").textContent = `$${usd(t.open)}`;
+  $("s-paid").textContent = `$${usd(t.paid)}`;
+  $("s-count").textContent = String(t.count);
 
-  const awardedUsers = [...new Set(data.filter((b) => b.awardedTo !== 0n).map((b) => b.awardedTo))];
-  const pendingOf = new Map(
-    await Promise.all(
-      awardedUsers.map(async (u) => [u, await pub.readContract({ address: cfg.contract, abi, functionName: "pending", args: [u] })])
-    )
-  );
-
-  let open = 0n, paid = 0n;
-  const rows = data.map((b, i) => {
-    const name = names[i];
-    let pill;
-    if (b.awardedTo !== 0n) {
-      const fee = b.relayerFee < b.amount ? b.relayerFee : b.amount;
-      paid += b.amount - fee;
-      pill = pendingOf.get(b.awardedTo) > 0n
-        ? `<span class="pill held">Awarded · awaiting wallet</span>`
-        : `<span class="pill paid">Paid</span>`;
-    } else if (b.expiry <= now) {
-      pill = `<span class="pill expired">Expired · refundable</span>`;
-    } else {
-      open += b.amount;
-      const days = Number((b.expiry - now) / 86400n);
-      pill = `<span class="pill open">Open · ${days}d left</span>`;
-    }
-    return { name, b, pill, id: ids[i] };
-  });
-
-  $("s-open").textContent = `$${usd(open)}`;
-  $("s-paid").textContent = `$${usd(paid)}`;
-  $("s-count").textContent = String(ids.length);
-
-  if (!rows.length) {
+  if (!bounties.length) {
     board.innerHTML = `<div class="empty">No bounties yet. <a href="#fund">Fund the first one →</a></div>`;
     return;
   }
-
-  board.innerHTML = rows
+  board.innerHTML = bounties
     .map(
-      ({ name, b, pill, id }) => `
-      <article class="win bounty" data-id="${id}">
-        <div class="titlebar"><i></i><i></i><span>${esc(name.split("/")[1] ?? name)}-${b.issue}.issue</span></div>
+      (b) => `
+      <article class="win bounty" data-id="${b.id}">
+        <div class="titlebar"><i></i><i></i><span>${esc(b.repo.split("/")[1] ?? b.repo)}-${b.issue}.issue</span></div>
         <div class="win-body">
           <div class="banner"><div class="amt">${usd(b.amount)}<small>USDC</small></div></div>
-          <div class="title"><a href="https://github.com/${esc(name)}/issues/${b.issue}" target="_blank" rel="noopener" data-title="${esc(name)}#${b.issue}">${esc(name)}#${b.issue}</a></div>
-          <div class="meta">${esc(name)} · #${b.issue}${b.awardedTo ? ` · → user ${b.awardedTo}` : ""}</div>
+          <div class="title"><a href="https://github.com/${esc(b.repo)}/issues/${b.issue}" target="_blank" rel="noopener" data-title="${esc(b.repo)}#${b.issue}">${esc(b.repo)}#${b.issue}</a></div>
+          <div class="meta">${esc(b.repo)} · #${b.issue}${b.awardedTo ? ` · → user ${b.awardedTo}` : ""}</div>
           <div class="foot">
-            ${pill}
-            <a class="btn btn-sm" href="https://github.com/${esc(name)}/issues/${b.issue}" target="_blank" rel="noopener">View issue</a>
+            ${statusPill(b)}
+            <a class="btn btn-sm" href="https://github.com/${esc(b.repo)}/issues/${b.issue}" target="_blank" rel="noopener">View issue</a>
           </div>
         </div>
       </article>`
     )
     .join("");
-
-  // Fill in issue titles.
-  for (const { name, b } of rows) {
-    gh(`repos/${name}/issues/${b.issue}`)
-      .then((issue) => {
-        const a = board.querySelector(`[data-title="${CSS.escape(`${name}#${b.issue}`)}"]`);
-        if (a) a.textContent = issue.title;
-      })
-      .catch(() => {});
-  }
+  fillTitles(board);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -293,7 +201,7 @@ $("fund-form").addEventListener("submit", async (ev) => {
     status(st, `Submitted ${txLink(hash)}…`);
     const r = await pub.waitForTransactionReceipt({ hash, pollingInterval: 250 });
     if (r.status !== "success") throw new Error("transaction reverted");
-    status(st, `✓ ${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}`, "ok");
+    status(st, `${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}`, "ok");
     loadBoard();
   } catch (e) {
     status(st, esc(e.shortMessage || e.message), "err");
@@ -338,7 +246,6 @@ $("lookup-form").addEventListener("submit", async (ev) => {
 
 // ---------------------------------------------------------------------------------------------
 
-$("wf-src").href = `https://github.com/${cfg.workflowRepo}/blob/${tag}/.github/workflows/award.yml`;
 $("gh-link").href = `https://github.com/${cfg.workflowRepo}`;
 if (cfg.relayer) $("relayer-addr").textContent = `relayer ${cfg.relayer.slice(0, 6)}…${cfg.relayer.slice(-4)}`;
 renderSnippets();
