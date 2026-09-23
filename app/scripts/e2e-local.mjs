@@ -31,24 +31,27 @@ const kid = `local-${Date.now()}`;
 const modulus = "0x" + Buffer.from(key.publicKey.export({ format: "jwk" }).n, "base64url").toString("hex");
 await pub.waitForTransactionReceipt({ hash: await w(owner).writeContract({ address, abi, functionName: "setSigningKey", args: [kid, modulus] }) });
 
-const issue = BigInt(Math.floor(Math.random() * 1e6));
-const repoId = 123456n;
+const issue = BigInt(process.env.ISSUE ?? Math.floor(Math.random() * 1e6));
+const repoId = BigInt(process.env.REPO_ID ?? 123456);
+const repoName = process.env.REPO ?? "acme/widgets";
+const userId = process.env.USER_ID ?? "1001";
+const login = process.env.LOGIN ?? "alice";
 const now = Number((await pub.getBlock()).timestamp);
 await pub.waitForTransactionReceipt({
   hash: await w(funder).writeContract({
     address, abi, functionName: "fund",
-    args: [repoId, issue, "acme/widgets", WF, BigInt(now + 86400), parseUnits("0.03", 18)],
+    args: [repoId, issue, repoName, WF, BigInt(now + 86400), parseUnits("0.03", 18)],
     value: parseUnits("25", 18),
   }),
 });
-console.log(`funded acme/widgets#${issue} with 25 USDC`);
+console.log(`funded ${repoName}#${issue} with 25 USDC`);
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 function jwt(claims) {
   const input = `${b64({ alg: "RS256", kid, typ: "JWT" })}.${b64({
     iss: "https://token.actions.githubusercontent.com", nbf: now - 5, iat: now, exp: now + 300,
-    repository_id: String(repoId), repository: "acme/widgets", repository_owner_id: "9001",
-    actor_id: "1001", actor: "alice", job_workflow_ref: WF, ...claims,
+    repository_id: String(repoId), repository: repoName, repository_owner_id: "9001",
+    actor_id: userId, actor: login, job_workflow_ref: WF, ...claims,
   })}`;
   return `${input}.${createSign("RSA-SHA256").update(input).sign(key.privateKey).toString("base64url")}`;
 }
@@ -59,19 +62,19 @@ const wallet = privateKeyToAccount("0x" + "ab".repeat(32)).address;
 const lc = address.toLowerCase();
 
 console.log("forged award (wrong workflow):", await post("/api/relay/award", {
-  token: jwt({ aud: `mergepay:${lc}:${issue}:1001`, event_name: "pull_request_target", job_workflow_ref: "evil/x/.github/workflows/a.yml@main" }),
-  issue: String(issue), userId: "1001",
+  token: jwt({ aud: `mergepay:${lc}:${issue}:${userId}`, event_name: "pull_request_target", job_workflow_ref: "evil/x/.github/workflows/a.yml@main" }),
+  issue: String(issue), userId,
 }));
 
 let t0 = Date.now();
 console.log("award:", await post("/api/relay/award", {
-  token: jwt({ aud: `mergepay:${lc}:${issue}:1001`, event_name: "pull_request_target" }),
-  issue: String(issue), userId: "1001",
+  token: jwt({ aud: `mergepay:${lc}:${issue}:${userId}`, event_name: "pull_request_target" }),
+  issue: String(issue), userId,
 }), `${Date.now() - t0}ms`);
 
 t0 = Date.now();
 console.log("link:", await post("/api/relay/link", {
-  token: jwt({ aud: `mergepay-link:${lc}:${wallet.toLowerCase()}`, event_name: "workflow_dispatch", repository_owner_id: "1001", iat: now + Math.floor(Math.random() * 1000) }),
+  token: jwt({ aud: `mergepay-link:${lc}:${wallet.toLowerCase()}`, event_name: "workflow_dispatch", repository_owner_id: userId, iat: now + Math.floor(Math.random() * 1000) }),
   wallet,
 }), `${Date.now() - t0}ms`);
 

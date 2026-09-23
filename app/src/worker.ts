@@ -208,6 +208,7 @@ export default {
         try {
           state = await indexFeed(env);
         } catch (e) {
+          console.error("feed index failed", e);
           if (!state) return json({ items: [], error: String(e) });
         }
       }
