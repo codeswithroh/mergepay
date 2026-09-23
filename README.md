@@ -11,7 +11,7 @@ PR merged ──▶ GitHub signs JWT ──▶ Arc contract checks RSA sig + cla
    t+0s            t+3s                     t+4s  (~770k gas ≈ $0.016)           t+4.5s
 ```
 
-- **Live app:** _TBD after deploy_
+- **Live app:** https://mergepay.codeswithroh.workers.dev
 - **Contract (Arc mainnet, chain 5042):** _TBD_
 
 ## Why Arc

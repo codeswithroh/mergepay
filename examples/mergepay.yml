@@ -15,4 +15,4 @@ jobs:
       contents: read
     with:
       contract: "0xYOUR_MERGEPAY_ADDRESS"
-      relayer: https://mergepay.example.workers.dev
+      relayer: https://mergepay.codeswithroh.workers.dev
