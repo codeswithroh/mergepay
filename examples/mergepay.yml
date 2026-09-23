@@ -1,0 +1,18 @@
+# .github/workflows/mergepay.yml in the repo whose issues carry bounties.
+name: MergePay
+on:
+  pull_request_target:
+    types: [closed]
+
+jobs:
+  mergepay:
+    if: github.event.pull_request.merged
+    uses: codeswithroh/mergepay/.github/workflows/award.yml@v1
+    permissions:
+      id-token: write       # GitHub signs the merge proof
+      pull-requests: write  # payout comment
+      issues: write
+      contents: read
+    with:
+      contract: "0xYOUR_MERGEPAY_ADDRESS"
+      relayer: https://mergepay.example.workers.dev

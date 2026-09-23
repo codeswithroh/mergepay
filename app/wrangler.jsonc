@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mergepay",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./public", "run_worker_first": ["/api/*"] },
+  "observability": { "enabled": true },
+  "vars": {
+    "CONTRACT": "0x0000000000000000000000000000000000000000",
+    "DEPLOY_BLOCK": "0",
+    "RPC_URL": "https://rpc.mainnet.arc.io",
+    "EXPLORER": "https://explorer.arc.io",
+    "WORKFLOW_REPO": "codeswithroh/mergepay",
+    "WORKFLOW_REF": "codeswithroh/mergepay/.github/workflows/award.yml@refs/tags/v1"
+  }
+  // secret: RELAYER_KEY (wrangler secret put RELAYER_KEY)
+}

@@ -1,0 +1,89 @@
+# Reusable workflow: when a PR is merged, prove it to MergePay on Arc and pay the author.
+#
+# Pin this file by tag or commit in the bounty (`job_workflow_ref`), so funders know exactly
+# which logic decides who gets paid. It never checks out PR code, so running under
+# pull_request_target is safe.
+name: MergePay award
+
+on:
+  workflow_call:
+    inputs:
+      contract:
+        description: MergePay contract address on Arc
+        type: string
+        required: true
+      relayer:
+        description: Relayer base URL (submits the proof and is reimbursed from the bounty)
+        type: string
+        required: true
+      explorer:
+        type: string
+        default: https://explorer.arc.io
+
+jobs:
+  award:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Find issues this PR closes
+        id: issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          owner="${REPO%%/*}"; name="${REPO##*/}"
+          linked=$(gh api graphql \
+            -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){closingIssuesReferences(first:20){nodes{number}}}}}' \
+            -F o="$owner" -F r="$name" -F n="$PR" \
+            --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' || true)
+          # Keywords in the body too ("Fixes #12"), in case the link was made before the merge.
+          keyword=$(printf '%s' "${BODY:-}" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' || true)
+          issues=$(printf '%s\n%s\n' "$linked" "$keyword" | grep -E '^[0-9]+$' | sort -un | tr '\n' ' ')
+          echo "issues=$issues" >> "$GITHUB_OUTPUT"
+          echo "Closes: ${issues:-none}"
+
+      - name: Prove merge and claim bounties
+        if: steps.issues.outputs.issues != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUES: ${{ steps.issues.outputs.issues }}
+          CONTRACT: ${{ inputs.contract }}
+          RELAYER: ${{ inputs.relayer }}
+          EXPLORER: ${{ inputs.explorer }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          contract=$(printf '%s' "$CONTRACT" | tr 'A-F' 'a-f')
+          notes=""
+          for issue in $ISSUES; do
+            aud="mergepay:${contract}:${issue}:${AUTHOR_ID}"
+            token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg a "$aud" '$a|@uri')" | jq -r .value)
+            echo "::add-mask::$token"
+            body=$(jq -n --arg t "$token" --argjson i "$issue" --argjson u "$AUTHOR_ID" '{token:$t,issue:$i,userId:$u}')
+            res=$(curl -sS -X POST "${RELAYER%/}/api/relay/award" -H 'content-type: application/json' -d "$body" || echo '{"ok":false,"error":"relayer unreachable"}')
+            echo "#$issue -> $res"
+            if [ "$(jq -r .ok <<<"$res")" = "true" ]; then
+              tx=$(jq -r .txHash <<<"$res"); amount=$(jq -r .payout <<<"$res"); paid=$(jq -r .delivered <<<"$res")
+              if [ "$paid" = "true" ]; then
+                line="💸 **${amount} USDC** paid to @${AUTHOR} for #${issue} on Arc — [tx](${EXPLORER%/}/tx/${tx})"
+              else
+                line="🔒 **${amount} USDC** awarded to @${AUTHOR} for #${issue} — [tx](${EXPLORER%/}/tx/${tx}). Link a wallet to receive it: ${RELAYER%/}/#link"
+              fi
+              notes="${notes}${line}"$'\n'
+            fi
+          done
+          if [ -n "$notes" ]; then
+            printf '%s\n%s' "$notes" "<sub>Paid by [MergePay](${RELAYER%/}) · GitHub's OIDC signature verified on-chain on Arc</sub>" \
+              | gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
+          fi

@@ -1,0 +1,45 @@
+# Reusable workflow: prove "GitHub user #id controls wallet 0x…" to MergePay.
+# Call it from workflow_dispatch in a repository you own (see examples/link.yml).
+name: MergePay link wallet
+
+on:
+  workflow_call:
+    inputs:
+      wallet:
+        type: string
+        required: true
+      contract:
+        type: string
+        required: true
+      relayer:
+        type: string
+        required: true
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Link wallet
+        env:
+          WALLET: ${{ inputs.wallet }}
+          CONTRACT: ${{ inputs.contract }}
+          RELAYER: ${{ inputs.relayer }}
+        run: |
+          set -euo pipefail
+          lower() { printf '%s' "$1" | tr 'A-F' 'a-f'; }
+          wallet=$(lower "$WALLET"); contract=$(lower "$CONTRACT")
+          [[ "$wallet" =~ ^0x[0-9a-f]{40}$ ]] || { echo "::error::wallet must be a 0x address"; exit 1; }
+          aud="mergepay-link:${contract}:${wallet}"
+          token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg a "$aud" '$a|@uri')" | jq -r .value)
+          echo "::add-mask::$token"
+          res=$(curl -sS -X POST "${RELAYER%/}/api/relay/link" -H 'content-type: application/json' \
+            -d "$(jq -n --arg t "$token" --arg w "$wallet" '{token:$t,wallet:$w}')")
+          echo "$res"
+          if [ "$(jq -r .ok <<<"$res")" != "true" ]; then
+            echo "::error::$(jq -r .error <<<"$res")"; exit 1
+          fi
+          echo "### ✅ @${GITHUB_ACTOR} linked to \`${wallet}\` on Arc" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tx: $(jq -r .txHash <<<"$res")" >> "$GITHUB_STEP_SUMMARY"
