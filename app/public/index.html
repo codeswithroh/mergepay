@@ -5,152 +5,240 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MergePay — get paid when your PR merges</title>
   <meta name="description" content="USDC bounties on GitHub issues, paid on merge. GitHub's OIDC signature is verified on-chain on Arc — no bots, no backend, no trusted keys." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238957e5'/><path d='M11 8v16M11 12c0 4 10 2 10 8v4' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/></svg>" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='5' fill='white' stroke='black' stroke-width='3'/><path d='M11 8v16M11 12c0 4 10 2 10 8v4' stroke='black' stroke-width='3' fill='none' stroke-linecap='round'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header class="nav">
-    <a class="brand" href="/">
-      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--merge)"/><path d="M11 8v16M11 12c0 4 10 2 10 8v4" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-      MergePay
+  <header class="menubar">
+    <a class="logo" href="/" aria-label="MergePay home">
+      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="5" fill="#fff" stroke="#000" stroke-width="3"/><path d="M11 8v16M11 12c0 4 10 2 10 8v4" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
     </a>
     <nav>
       <a href="#bounties">Bounties</a>
       <a href="#fund">Fund</a>
       <a href="#link">Get paid</a>
       <a href="#how">How it works</a>
-      <a id="gh-link" href="https://github.com/codeswithroh/mergepay" target="_blank" rel="noopener">GitHub ↗</a>
+      <a id="gh-link" href="https://github.com/codeswithroh/mergepay" target="_blank" rel="noopener">GitHub</a>
     </nav>
-    <button id="connect" class="btn btn-ghost">Connect wallet</button>
+    <button id="connect" class="btn btn-sm">Connect wallet</button>
   </header>
 
-  <main>
+  <div class="frame">
+    <!-- ============ HERO (white) ============ -->
     <section class="hero">
-      <p class="eyebrow"><span class="dot"></span> Live on Arc mainnet</p>
-      <h1>Merge the PR.<br /><span class="grad">Get paid in USDC.</span></h1>
-      <p class="lede">
-        Put USDC on any GitHub issue. When a pull request that closes it is merged, GitHub signs a token
-        and an Arc contract <strong>verifies GitHub's RSA signature on-chain</strong>, then pays the author.
-        There's no bot, no backend and no key to trust.
-      </p>
-      <div class="cta">
-        <a class="btn btn-primary" href="#fund">Fund an issue</a>
-        <a class="btn btn-ghost" href="#link">I'm a contributor</a>
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <h1>Merge it.<br />Get paid.</h1>
+          <p class="lede">
+            USDC bounties on GitHub issues, paid the moment the PR merges.
+            GitHub signs the proof, and an <u>Arc</u> contract checks that signature on-chain.
+            There's no bot, no backend and no key to trust.
+          </p>
+          <div class="cta">
+            <a class="btn" href="#fund">Fund an issue</a>
+            <a class="btn btn-flat" href="#link">I'm a contributor</a>
+          </div>
+          <dl class="stats" id="stats">
+            <div><dt>Escrowed</dt><dd id="s-open">—</dd></div>
+            <div><dt>Paid out</dt><dd id="s-paid">—</dd></div>
+            <div><dt>Bounties</dt><dd id="s-count">—</dd></div>
+          </dl>
+        </div>
+
+        <!-- illustration: a retro computer whose face is a merge glyph, holding a USDC coin -->
+        <svg class="hero-art" viewBox="0 0 320 300" role="img" aria-label="A retro computer with a git-merge face holding a USDC coin">
+          <g fill="none" stroke="#000" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <!-- sparkles -->
+            <circle cx="46" cy="30" r="6" />
+            <circle cx="92" cy="14" r="5" />
+            <circle cx="112" cy="46" r="5" />
+            <path d="M270 40v18M261 49h18" />
+            <path d="M28 150v12M22 156h12" />
+            <!-- coin arm -->
+            <path d="M104 190c-22 0-40-6-52-20" />
+            <!-- coin -->
+            <circle cx="46" cy="120" r="34" fill="#fff" />
+            <circle cx="46" cy="120" r="24" />
+            <path d="M46 104v32M54 110c-3-4-15-5-17 1-3 9 19 6 17 16-2 6-14 6-18 1" stroke-width="4.5" />
+            <path d="M40 150c6 8 14 14 28 20" />
+            <!-- body shadow -->
+            <rect x="120" y="74" width="170" height="172" rx="22" fill="#000" />
+            <!-- body -->
+            <rect x="106" y="62" width="170" height="172" rx="22" fill="#fff" />
+            <!-- screen bezel -->
+            <rect x="126" y="80" width="130" height="112" rx="14" fill="#000" />
+            <rect x="136" y="90" width="110" height="92" rx="9" fill="#fff" />
+            <!-- merge glyph face -->
+            <circle cx="170" cy="112" r="9" fill="#000" />
+            <circle cx="170" cy="162" r="9" fill="#000" />
+            <circle cx="214" cy="140" r="9" fill="#000" />
+            <path d="M170 120v34M170 126c0 12 20 14 36 14" stroke-width="6" />
+            <!-- floppy slot -->
+            <path d="M200 212h52" />
+            <circle cx="132" cy="212" r="7" fill="#000" />
+            <!-- keyboard -->
+            <rect x="96" y="244" width="200" height="26" rx="6" fill="#fff" />
+            <path d="M112 257h10M132 257h10M152 257h10M172 257h48M230 257h10M250 257h10M270 257h10" stroke-width="4" />
+            <!-- ground line -->
+            <path d="M70 282h240" />
+            <!-- cable -->
+            <path d="M276 180c30 0 30 40 10 50s-10 40 14 44" />
+          </g>
+        </svg>
       </div>
 
-      <ol class="timeline" aria-label="What happens on merge">
-        <li><span class="t">t+0s</span><span class="ico merge">⎇</span><div><b>PR #128 merged</b><small>acme/widgets · closes #42</small></div></li>
-        <li><span class="t">t+3s</span><span class="ico gh">✎</span><div><b>GitHub signs an OIDC JWT</b><small>aud = mergepay:0x…:42:1001</small></div></li>
-        <li><span class="t">t+4s</span><span class="ico arc">◆</span><div><b>Arc verifies RS256 on-chain</b><small>modexp precompile · ~770k gas ≈ $0.016</small></div></li>
-        <li><span class="t">t+4.5s</span><span class="ico usdc">$</span><div><b>50 USDC to @alice</b><small>comment posted on the PR with the tx link</small></div></li>
-      </ol>
-
-      <dl class="stats" id="stats">
-        <div><dt>Escrowed</dt><dd id="s-open">—</dd></div>
-        <div><dt>Paid out</dt><dd id="s-paid">—</dd></div>
-        <div><dt>Bounties</dt><dd id="s-count">—</dd></div>
-      </dl>
-    </section>
-
-    <section id="bounties" class="panel">
-      <div class="panel-head">
-        <h2>Bounties</h2>
-        <a class="mono small muted" id="contract-link" target="_blank" rel="noopener"></a>
+      <div class="quick">
+        <h3>Quick links</h3>
+        <div class="quick-row">
+          <a href="#bounties">Bounties <span>↗</span></a>
+          <a href="#fund">Fund an issue <span>↗</span></a>
+          <a href="#link">Get paid <span>↗</span></a>
+          <a href="#how">How it works <span>↗</span></a>
+        </div>
       </div>
-      <div id="board" class="board"><p class="muted">Loading from Arc…</p></div>
     </section>
 
-    <section id="fund" class="panel two">
-      <div>
+    <!-- ============ DOTTED DESKTOP ============ -->
+    <div class="desk">
+
+      <section id="merge-log" class="section">
+        <div class="win win-wide">
+          <div class="titlebar"><i></i><i></i><span>merge.log</span></div>
+          <ol class="log" aria-label="What happens on merge">
+            <li><time>t+0.0s</time><b>PR #128 merged</b><span>acme/widgets · closes #42</span></li>
+            <li><time>t+3.0s</time><b>GitHub signs an OIDC JWT</b><span>aud = mergepay:0x…:42:1001</span></li>
+            <li><time>t+4.0s</time><b>Arc verifies RS256 on-chain</b><span>modexp precompile · ~770k gas ≈ $0.016</span></li>
+            <li class="done"><time>t+4.5s</time><b>50 USDC → @alice</b><span>tx link posted on the PR ✔</span></li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="bounties" class="section">
+        <div class="section-head">
+          <h2>Bounties</h2>
+          <a class="chip mono" id="contract-link" target="_blank" rel="noopener"></a>
+        </div>
+        <div id="board" class="board"><p class="loading">Loading from Arc…</p></div>
+      </section>
+
+      <section id="fund" class="section">
         <h2>Fund an issue</h2>
-        <p class="muted">USDC is held by the contract, not by us. If nobody merges a fix before the deadline, anyone who funded it can take their share back.</p>
-        <form id="fund-form" class="form">
-          <label>Repository<input name="repo" placeholder="owner/name" required autocomplete="off" /></label>
-          <div class="row">
-            <label>Issue #<input name="issue" type="number" min="1" required /></label>
-            <label>Amount (USDC)<input name="amount" type="number" min="0.1" step="0.01" value="25" required /></label>
+        <div class="pair">
+          <div class="win">
+            <div class="titlebar"><i></i><i></i><span>escrow.app</span></div>
+            <div class="win-body">
+              <p>USDC is held by the contract, not by us. If nobody merges a fix before the deadline, anyone who funded it can take their share back.</p>
+              <form id="fund-form" class="form">
+                <label>Repository<input name="repo" placeholder="owner/name" required autocomplete="off" /></label>
+                <div class="row">
+                  <label>Issue #<input name="issue" type="number" min="1" required /></label>
+                  <label>Amount (USDC)<input name="amount" type="number" min="0.1" step="0.01" value="25" required /></label>
+                </div>
+                <div class="row">
+                  <label>Refundable after (days)<input name="days" type="number" min="1" value="30" required /></label>
+                  <label>Relayer fee (USDC)<input name="fee" type="number" min="0" max="1" step="0.01" value="0.03" required /></label>
+                </div>
+                <p class="hint" id="repo-hint"></p>
+                <button class="btn" type="submit">Escrow USDC on Arc</button>
+                <p class="status" id="fund-status" role="status"></p>
+              </form>
+            </div>
           </div>
-          <div class="row">
-            <label>Refundable after (days)<input name="days" type="number" min="1" value="30" required /></label>
-            <label>Relayer fee (USDC)<input name="fee" type="number" min="0" max="1" step="0.01" value="0.03" required /></label>
-          </div>
-          <p class="hint" id="repo-hint"></p>
-          <button class="btn btn-primary" type="submit">Escrow USDC on Arc</button>
-          <p class="status" id="fund-status" role="status"></p>
-        </form>
-      </div>
-      <div>
-        <h3>Then add one workflow to the repo</h3>
-        <p class="muted">It runs when a PR is merged. It never checks out PR code, and the bounty only accepts tokens from this exact workflow version:</p>
-        <p class="mono small pin" id="wf-ref"></p>
-        <pre class="code"><code id="award-yml"></code></pre>
-        <div class="cta">
-          <a class="btn btn-ghost" id="add-award" target="_blank" rel="noopener">Add to repo on GitHub ↗</a>
-          <button class="btn btn-ghost" data-copy="award-yml">Copy</button>
-        </div>
-      </div>
-    </section>
 
-    <section id="link" class="panel two">
-      <div>
+          <div class="win">
+            <div class="titlebar"><i></i><i></i><span>.github/workflows/mergepay.yml</span></div>
+            <div class="win-body">
+              <p>Then add one workflow to the repo. It runs when a PR is merged, never checks out PR code, and the bounty only accepts proofs from this pinned version:</p>
+              <p class="pin mono" id="wf-ref"></p>
+              <pre class="code"><code id="award-yml"></code></pre>
+              <div class="cta">
+                <a class="btn" id="add-award" target="_blank" rel="noopener">Add to repo ↗</a>
+                <button class="btn btn-flat" data-copy="award-yml">Copy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="link" class="section">
         <h2>Get paid</h2>
-        <p class="muted">Link your GitHub account to an Arc wallet once. You can do it before or after your PR is merged: awards wait in the contract until you link. You never need USDC for gas.</p>
-        <form id="lookup-form" class="form">
-          <label>GitHub username<input name="login" placeholder="octocat" required autocomplete="off" /></label>
-          <button class="btn btn-ghost" type="submit">Check status</button>
-        </form>
-        <div id="lookup" class="lookup"></div>
-      </div>
-      <div>
-        <h3>Link in one run</h3>
-        <ol class="steps">
-          <li>Pick any repo <b>you own</b> (your profile repo works).</li>
-          <li>Add this workflow. Your wallet is filled in once you connect it.</li>
-          <li><b>Actions → MergePay link → Run workflow.</b> GitHub proves who ran it, and the contract records your wallet.</li>
-        </ol>
-        <label class="inline">Your repo<input id="link-repo" placeholder="you/you" autocomplete="off" /></label>
-        <pre class="code"><code id="link-yml"></code></pre>
-        <div class="cta">
-          <a class="btn btn-ghost" id="add-link" target="_blank" rel="noopener">Add to my repo ↗</a>
-          <button class="btn btn-ghost" data-copy="link-yml">Copy</button>
+        <div class="pair">
+          <div class="win">
+            <div class="titlebar"><i></i><i></i><span>whoami.app</span></div>
+            <div class="win-body">
+              <p>Link your GitHub account to an Arc wallet once. You can do it before or after your PR is merged: awards wait in the contract until you link. You never need USDC for gas.</p>
+              <form id="lookup-form" class="form form-inline">
+                <label>GitHub username<input name="login" placeholder="octocat" required autocomplete="off" /></label>
+                <button class="btn" type="submit">Check</button>
+              </form>
+              <div id="lookup" class="lookup"></div>
+            </div>
+          </div>
+
+          <div class="win">
+            <div class="titlebar"><i></i><i></i><span>.github/workflows/mergepay-link.yml</span></div>
+            <div class="win-body">
+              <ol class="steps">
+                <li>Pick any repo <b>you own</b>. Your profile repo works.</li>
+                <li>Add this workflow. Your wallet is filled in once you connect it.</li>
+                <li><b>Actions → MergePay link → Run workflow.</b></li>
+              </ol>
+              <label>Your repo<input id="link-repo" placeholder="you/you" autocomplete="off" /></label>
+              <pre class="code"><code id="link-yml"></code></pre>
+              <div class="cta">
+                <a class="btn" id="add-link" target="_blank" rel="noopener">Add to my repo ↗</a>
+                <button class="btn btn-flat" data-copy="link-yml">Copy</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section id="how" class="panel">
-      <h2>Why it's trustless, and why Arc</h2>
-      <div class="grid3">
-        <article>
-          <h4>GitHub is the oracle</h4>
-          <p>Every Actions job can request an OIDC token, a JWT signed by GitHub with RS256. It names the repo, the event and the exact workflow file and commit that ran. MergePay checks that signature <em>inside the contract</em> using the <span class="mono">modexp</span> precompile, then reads the claims.</p>
-        </article>
-        <article>
-          <h4>Nothing to forge</h4>
-          <p>The token's audience binds <span class="mono">contract : issue : author-id</span>. The bounty pins <span class="mono">job_workflow_ref</span>, and wallet links require <span class="mono">actor_id == repository_owner_id</span>. Relayers only pay gas. They can't redirect funds.</p>
-        </article>
-        <article>
-          <h4>Only makes sense on Arc</h4>
-          <p>USDC <em>is</em> the gas token. Bounties, fees and payouts are all one asset, so a first-time contributor with a zero balance still gets paid. Blocks are final in under a second, so the payout comment lands on the PR moments after the merge.</p>
-        </article>
-      </div>
-      <details class="trust">
-        <summary>Trust model, honestly</summary>
-        <ul>
-          <li><b>GitHub's signing keys</b> are registered by the contract owner, and anyone can check them against <a href="https://token.actions.githubusercontent.com/.well-known/jwks" target="_blank" rel="noopener">GitHub's JWKS</a>. Moving this to a timelocked multisig is the next step.</li>
-          <li><b>Maintainers decide what gets merged.</b> The workflow pays whoever authored the merged PR that closes the issue. Pick bounties on repos you trust.</li>
-          <li><b>The award logic is public and pinned.</b> <a id="wf-src" target="_blank" rel="noopener">award.yml</a> is referenced by tag, and the bounty stores its hash.</li>
-        </ul>
-      </details>
-    </section>
-  </main>
+      <section id="how" class="section">
+        <h2>How it works</h2>
+        <div class="board">
+          <article class="win">
+            <div class="titlebar"><i></i><i></i><span>oracle.txt</span></div>
+            <div class="win-body">
+              <h4>GitHub is the oracle</h4>
+              <p>Every Actions job can request an OIDC token, a JWT that GitHub signs with RS256. It names the repo, the event and the exact workflow that ran. MergePay checks that signature <em>inside the contract</em> using the <span class="mono">modexp</span> precompile.</p>
+            </div>
+          </article>
+          <article class="win">
+            <div class="titlebar"><i></i><i></i><span>threat-model.txt</span></div>
+            <div class="win-body">
+              <h4>Nothing to forge</h4>
+              <p>The token's audience binds <span class="mono">contract:issue:author</span>. The bounty pins <span class="mono">job_workflow_ref</span>, and wallet links need <span class="mono">actor_id == repository_owner_id</span>. Relayers only pay gas.</p>
+            </div>
+          </article>
+          <article class="win">
+            <div class="titlebar"><i></i><i></i><span>why-arc.txt</span></div>
+            <div class="win-body">
+              <h4>Only makes sense on Arc</h4>
+              <p>USDC <em>is</em> the gas token, so bounty, fee and payout are one asset. A contributor with a zero balance still gets paid. Blocks are final in under a second, so the payout comment lands moments after the merge.</p>
+            </div>
+          </article>
+        </div>
 
-  <footer>
-    <span>MergePay · built on <a href="https://arc.io" target="_blank" rel="noopener">Arc</a> with native USDC</span>
-    <span class="mono small" id="relayer-addr"></span>
-  </footer>
+        <details class="win trust">
+          <summary class="titlebar"><i></i><i></i><span>README — trust model, honestly</span></summary>
+          <ul class="win-body">
+            <li><b>GitHub's signing keys</b> are registered by the contract owner, and anyone can check them against <a href="https://token.actions.githubusercontent.com/.well-known/jwks" target="_blank" rel="noopener">GitHub's JWKS</a>. Moving this to a timelocked multisig is next.</li>
+            <li><b>Maintainers decide what gets merged.</b> The workflow pays whoever authored the merged PR that closes the issue.</li>
+            <li><b>The award logic is public and pinned.</b> <a id="wf-src" target="_blank" rel="noopener">award.yml</a> is referenced by tag, and the bounty stores its hash.</li>
+          </ul>
+        </details>
+      </section>
+
+      <footer>
+        <span>MergePay · built on <a href="https://arc.io" target="_blank" rel="noopener">Arc</a> with native USDC</span>
+        <span class="mono" id="relayer-addr"></span>
+      </footer>
+    </div>
+  </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script type="module" src="/app.js"></script>

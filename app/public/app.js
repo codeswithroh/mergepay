@@ -195,14 +195,18 @@ async function loadBoard() {
   board.innerHTML = rows
     .map(
       ({ name, b, pill, id }) => `
-      <div class="bounty" data-id="${id}">
-        <div>
+      <article class="win bounty" data-id="${id}">
+        <div class="titlebar"><i></i><i></i><span>${esc(name.split("/")[1] ?? name)}-${b.issue}.issue</span></div>
+        <div class="win-body">
+          <div class="banner"><div class="amt">${usd(b.amount)}<small>USDC</small></div></div>
           <div class="title"><a href="https://github.com/${esc(name)}/issues/${b.issue}" target="_blank" rel="noopener" data-title="${esc(name)}#${b.issue}">${esc(name)}#${b.issue}</a></div>
-          <div class="meta">${esc(name)} · issue #${b.issue}${b.awardedTo ? ` · awarded to user ${b.awardedTo}` : ""}</div>
+          <div class="meta">${esc(name)} · #${b.issue}${b.awardedTo ? ` · → user ${b.awardedTo}` : ""}</div>
+          <div class="foot">
+            ${pill}
+            <a class="btn btn-sm" href="https://github.com/${esc(name)}/issues/${b.issue}" target="_blank" rel="noopener">View issue</a>
+          </div>
         </div>
-        ${pill}
-        <div class="amt">${usd(b.amount)}<small>USDC</small></div>
-      </div>`
+      </article>`
     )
     .join("");
 
