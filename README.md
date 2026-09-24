@@ -1,5 +1,9 @@
 # MergePay
 
+[![Live on Arc mainnet](https://img.shields.io/badge/Arc-mainnet%20%C2%B7%20chain%205042-000?style=flat-square)](https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD)
+[![Contract](https://img.shields.io/badge/contract-0xcff7…9EeD-000?style=flat-square)](https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD)
+[![App](https://img.shields.io/badge/app-mergepay.codeswithroh.workers.dev-000?style=flat-square)](https://mergepay.codeswithroh.workers.dev)
+
 **USDC bounties on GitHub issues, paid the moment the PR merges, on Arc.**
 
 A sponsor escrows USDC against an issue. When a pull request that closes it is merged, a GitHub
