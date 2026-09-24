@@ -10,6 +10,7 @@ import {
   createPublicClient,
   createWalletClient,
   defineChain,
+  fallback,
   formatUnits,
   getAddress,
   http,
@@ -27,6 +28,7 @@ interface Env {
   CONTRACT: string;
   DEPLOY_BLOCK: string;
   RPC_URL: string;
+  RPC_FALLBACK?: string;
   EXPLORER: string;
   WORKFLOW_REPO: string;
   WORKFLOW_REF: string;
@@ -41,6 +43,10 @@ const arc = (rpc: string) =>
     rpcUrls: { default: { http: [rpc] } },
     blockExplorers: { default: { name: "Arcscan", url: "https://explorer.arc.io" } },
   });
+
+/** Arc's public RPC rate-limits shared Cloudflare egress IPs, so fall back to a second provider. */
+const transport = (env: Env) =>
+  fallback([env.RPC_URL, env.RPC_FALLBACK].filter(Boolean).map((u) => http(u, { retryCount: 2, retryDelay: 300 })));
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -73,8 +79,8 @@ function revertReason(err: unknown): string {
 async function relay(env: Env, fn: "award" | "link", args: readonly unknown[]) {
   const chain = arc(env.RPC_URL);
   const account = privateKeyToAccount(env.RELAYER_KEY as Hex);
-  const pub = createPublicClient({ chain, transport: http() });
-  const wallet = createWalletClient({ chain, transport: http(), account });
+  const pub = createPublicClient({ chain, transport: transport(env) });
+  const wallet = createWalletClient({ chain, transport: transport(env), account });
   const address = getAddress(env.CONTRACT);
 
   // Simulate first so a bad token costs the relayer nothing.
@@ -137,14 +143,16 @@ async function indexFeed(env: Env): Promise<FeedState> {
   };
   if (!env.CONTRACT || env.CONTRACT === ZERO) return prev;
 
-  const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: http() });
+  const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: transport(env) });
   const address = getAddress(env.CONTRACT);
   const latest = await pub.getBlockNumber();
   let from = BigInt(prev.cursor);
-  const logs = [];
+  const logs: ReturnType<typeof parseEventLogs<typeof abi>> = [];
   for (let i = 0; i < MAX_CHUNKS && from <= latest; i++) {
     const to = from + CHUNK - 1n < latest ? from + CHUNK - 1n : latest;
-    logs.push(...(await pub.getContractEvents({ address, abi, fromBlock: from, toBlock: to })));
+    // Arc's RPC rejects topic-filtered eth_getLogs ("range too large"), so filter by address only
+    // and decode locally.
+    logs.push(...parseEventLogs({ abi, logs: await pub.getLogs({ address, fromBlock: from, toBlock: to }) }));
     from = to + 1n;
   }
 
@@ -209,7 +217,7 @@ export default {
       const repo = url.searchParams.get("repo");
       if (!repo || !/^\d+$/.test(repo)) return json({ error: "repo must be a numeric repository_id" }, 400);
       if (!env.CONTRACT || env.CONTRACT === ZERO) return json({ bounties: [] });
-      const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: http() });
+      const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: transport(env) });
       const [, data] = await pub.readContract({ address: getAddress(env.CONTRACT), abi, functionName: "listBounties", args: [0n, 1000n] });
       const now = BigInt(Math.floor(Date.now() / 1000));
       const bounties = data

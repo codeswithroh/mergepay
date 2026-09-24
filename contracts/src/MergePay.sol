@@ -43,6 +43,8 @@ contract MergePay {
     uint256 private constant SKEW = 60;
     /// How long an award waits for its recipient to link a wallet before funders can take it back.
     uint256 public constant CLAIM_WINDOW = 180 days;
+    /// Delay between announcing a new GitHub signing key and the contract trusting it.
+    uint256 public constant KEY_DELAY = 3 days;
 
     // ---------------------------------------------------------------------------------------------
     // Storage
@@ -65,6 +67,16 @@ contract MergePay {
     /// keccak256(kid) => RSA modulus of a GitHub Actions OIDC signing key (e = 65537).
     mapping(bytes32 => bytes) public signingKeys;
 
+    /// A key the owner has announced but that isn't trusted until `eta`. Anyone can compare it
+    /// with GitHub's published JWKS during the delay, and funders can pull their money out.
+    struct KeyProposal {
+        bytes modulus;
+        uint64 eta;
+    }
+    mapping(bytes32 => KeyProposal) public proposedKeys;
+    /// Number of announced-but-not-yet-active keys. While non-zero, funders may refund early.
+    uint256 public pendingKeyChanges;
+
     mapping(bytes32 => Bounty) public bounties;
     mapping(bytes32 => string) public repoNameOf;
     /// Every bounty ever opened, in creation order — lets a static frontend list bounties with a
@@ -84,6 +96,9 @@ contract MergePay {
     // ---------------------------------------------------------------------------------------------
 
     event SigningKeySet(string kid, bytes modulus);
+    event SigningKeyProposed(string kid, bytes modulus, uint64 eta);
+    event SigningKeyCancelled(string kid);
+    event SigningKeyRevoked(string kid);
     event OwnerChanged(address indexed owner);
     event Funded(
         bytes32 indexed bountyId,
@@ -110,18 +125,59 @@ contract MergePay {
         _;
     }
 
-    constructor(address owner_) {
+    /// @param kids / moduli GitHub's signing keys at deploy time, trusted immediately. They're in the
+    ///        deployment calldata, so anyone can check them against GitHub's JWKS.
+    constructor(address owner_, string[] memory kids, bytes[] memory moduli) {
+        if (kids.length != moduli.length) revert BadToken("keys");
         owner = owner_;
         emit OwnerChanged(owner_);
+        for (uint256 i; i < kids.length; ++i) {
+            _setKey(kids[i], moduli[i]);
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Admin: GitHub's JWKS. GitHub rotates keys rarely; the registry only lets the owner say
-    // "this kid has this modulus", which anyone can check against
-    // https://token.actions.githubusercontent.com/.well-known/jwks
+    // Admin: GitHub's JWKS (https://token.actions.githubusercontent.com/.well-known/jwks).
+    //
+    // Trusting a key is the one power that could move escrowed funds (a fake key could sign fake
+    // merge proofs), so adding a key is time-locked: announce, wait KEY_DELAY, then anyone can
+    // activate it. While any key change is pending, funders can refund open bounties early.
+    // Removing a key can't steal anything, so revocation is immediate.
     // ---------------------------------------------------------------------------------------------
 
-    function setSigningKey(string calldata kid, bytes calldata modulus) external onlyOwner {
+    function proposeSigningKey(string calldata kid, bytes calldata modulus) external onlyOwner {
+        if (modulus.length < 256) revert BadToken("modulus");
+        KeyProposal storage p = proposedKeys[keccak256(bytes(kid))];
+        if (p.eta == 0) ++pendingKeyChanges;
+        p.modulus = modulus;
+        p.eta = uint64(block.timestamp + KEY_DELAY);
+        emit SigningKeyProposed(kid, modulus, p.eta);
+    }
+
+    function activateSigningKey(string calldata kid) external {
+        bytes32 h = keccak256(bytes(kid));
+        KeyProposal memory p = proposedKeys[h];
+        if (p.eta == 0) revert BadToken("not proposed");
+        if (block.timestamp < p.eta) revert BadToken("key delay");
+        delete proposedKeys[h];
+        --pendingKeyChanges;
+        _setKey(kid, p.modulus);
+    }
+
+    function cancelSigningKey(string calldata kid) external onlyOwner {
+        bytes32 h = keccak256(bytes(kid));
+        if (proposedKeys[h].eta == 0) revert BadToken("not proposed");
+        delete proposedKeys[h];
+        --pendingKeyChanges;
+        emit SigningKeyCancelled(kid);
+    }
+
+    function revokeSigningKey(string calldata kid) external onlyOwner {
+        delete signingKeys[keccak256(bytes(kid))];
+        emit SigningKeyRevoked(kid);
+    }
+
+    function _setKey(string memory kid, bytes memory modulus) internal {
         signingKeys[keccak256(bytes(kid))] = modulus;
         emit SigningKeySet(kid, modulus);
     }
@@ -198,15 +254,16 @@ contract MergePay {
         }
     }
 
-    /// @notice Take back your contribution: in full once an unawarded bounty has expired, or your
-    ///         pro-rata share of the payout once an unclaimed award has been returned.
+    /// @notice Take back your contribution: in full once an unawarded bounty has expired (or at any
+    ///         time while a new signing key is pending), or your pro-rata share of the payout once an
+    ///         unclaimed award has been returned.
     function refund(bytes32 id) external {
         Bounty storage b = bounties[id];
         uint256 c = contributions[id][msg.sender];
         if (c == 0) revert BadBounty("nothing");
         uint256 amount;
         if (b.awardedTo == 0) {
-            if (block.timestamp < b.expiry) revert BadBounty("not expired");
+            if (block.timestamp < b.expiry && pendingKeyChanges == 0) revert BadBounty("not expired");
             amount = c;
             b.amount -= c;
         } else {

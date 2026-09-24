@@ -1,0 +1,19 @@
+# Dogfooding: lets the repo owner link a payout wallet. (Copy of examples/link.yml.)
+# Run it from the Actions tab; it proves your GitHub account controls the wallet.
+name: MergePay link
+on:
+  workflow_dispatch:
+    inputs:
+      wallet:
+        description: Arc wallet to receive bounties
+        required: true
+
+jobs:
+  link:
+    uses: codeswithroh/mergepay/.github/workflows/link.yml@v1
+    permissions:
+      id-token: write
+    with:
+      wallet: ${{ inputs.wallet }}
+      contract: "0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD"
+      relayer: https://mergepay.codeswithroh.workers.dev

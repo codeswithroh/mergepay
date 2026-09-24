@@ -12,7 +12,7 @@ PR merged ──▶ GitHub signs JWT ──▶ Arc contract checks RSA sig + cla
 ```
 
 - **Live app:** https://mergepay.codeswithroh.workers.dev
-- **Contract (Arc mainnet, chain 5042):** _TBD_
+- **Contract (Arc mainnet, chain 5042):** [`0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD`](https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD)
 
 ## Why Arc
 
@@ -94,9 +94,13 @@ matters is inside GitHub's signature. Anyone can run one.
   `"key":"`. Inside a JSON string every quote is escaped, so the pattern can't match inside a
   value, and values containing `\` are rejected. Tests cover a head-ref that tries to smuggle a second `aud`.
 - **Alg confusion:** only `RS256` is accepted, and keys are RSA moduli with e = 65537.
-- **GitHub's keys** are registered by the owner (`setSigningKey`) and can be checked against
-  https://token.actions.githubusercontent.com/.well-known/jwks. `SyncKeys` in
-  [`Deploy.s.sol`](contracts/script/Deploy.s.sol) re-syncs them. Next step: timelocked multisig ownership.
+- **GitHub's keys** are the one thing the owner controls, and trusting a fake key could forge merge
+  proofs. So they're **time-locked**. The keys at deploy time are in the constructor calldata, which anyone
+  can check against https://token.actions.githubusercontent.com/.well-known/jwks. After that, a new key is
+  announced with `proposeSigningKey`, is public for `KEY_DELAY` (3 days), and only then can anyone
+  `activateSigningKey` it. While any key change is pending, funders can `refund` open bounties early.
+  Revoking a key is immediate, since it can't move funds. `SyncKeys` in
+  [`Deploy.s.sol`](contracts/script/Deploy.s.sol) proposes any keys GitHub has rotated in.
 - **`pull_request_target`** is safe here because the award workflow never checks out PR code.
   User-controlled text (the PR body) only reaches the job through `env:`.
 - **Trust in maintainers is inherent:** whoever can merge decides who authored the fix. The pinned
@@ -105,7 +109,7 @@ matters is inside GitHub's signature. Anyone can run one.
 ## Repo layout
 
 ```
-contracts/   Foundry: MergePay.sol + Base64Url / JsonClaims / RsaSha256 libs, 26 tests
+contracts/   Foundry: MergePay.sol + Base64Url / JsonClaims / RsaSha256 libs, 30 tests
 .github/     reusable award.yml and link.yml workflows
 examples/    what repos and contributors copy
 app/         Cloudflare Worker: relayer API + static web app (viem, no build step)
@@ -115,7 +119,7 @@ app/         Cloudflare Worker: relayer API + static web app (viem, no build ste
 
 ```bash
 # contracts
-cd contracts && forge test -vv            # 26 tests, incl. forged/tampered/replayed tokens
+cd contracts && forge test -vv            # 30 tests, incl. forged/tampered/replayed tokens
 node scripts/gen-fixtures.mjs             # regenerate signed test tokens
 
 # local end-to-end: anvil + worker + GitHub-shaped tokens through the relayer

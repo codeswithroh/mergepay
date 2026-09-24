@@ -4,36 +4,50 @@ pragma solidity ^0.8.30;
 import {Script, console} from "forge-std/Script.sol";
 import {MergePay} from "../src/MergePay.sol";
 
-/// forge script script/Deploy.s.sol --rpc-url arc --broadcast --account <keystore>
-/// Run `node scripts/fetch-jwks.mjs` first.
-contract Deploy is Script {
-    struct Key {
-        string kid;
-        bytes modulus;
-    }
+struct Key {
+    string kid;
+    bytes modulus;
+}
 
-    function run() external returns (MergePay mp) {
+abstract contract KeysScript is Script {
+    function loadKeys() internal view returns (string[] memory kids, bytes[] memory moduli) {
         Key[] memory keys = abi.decode(vm.parseJson(vm.readFile("script/jwks.json"), ".keys"), (Key[]));
-        vm.startBroadcast();
-        mp = new MergePay(msg.sender);
+        kids = new string[](keys.length);
+        moduli = new bytes[](keys.length);
         for (uint256 i; i < keys.length; ++i) {
-            mp.setSigningKey(keys[i].kid, keys[i].modulus);
+            kids[i] = keys[i].kid;
+            moduli[i] = keys[i].modulus;
         }
-        vm.stopBroadcast();
-        console.log("MergePay deployed at", address(mp));
     }
 }
 
-/// MERGEPAY=0x... forge script script/Deploy.s.sol:SyncKeys --rpc-url arc --broadcast --account <keystore>
-contract SyncKeys is Script {
+/// node scripts/fetch-jwks.mjs
+/// OWNER=0x... forge script script/Deploy.s.sol --tc Deploy --rpc-url arc --broadcast --private-key ...
+/// GitHub's current keys go into the constructor and are trusted immediately.
+contract Deploy is KeysScript {
+    function run() external returns (MergePay mp) {
+        (string[] memory kids, bytes[] memory moduli) = loadKeys();
+        vm.startBroadcast();
+        address owner = vm.envOr("OWNER", msg.sender);
+        mp = new MergePay(owner, kids, moduli);
+        vm.stopBroadcast();
+        console.log("MergePay deployed at", address(mp));
+        console.log("owner", owner);
+    }
+}
+
+/// Announce any GitHub key the contract doesn't trust yet. After KEY_DELAY, anyone can call
+/// activateSigningKey(kid) for each.
+/// MERGEPAY=0x... forge script script/Deploy.s.sol --tc SyncKeys --rpc-url arc --broadcast --private-key ...
+contract SyncKeys is KeysScript {
     function run() external {
         MergePay mp = MergePay(vm.envAddress("MERGEPAY"));
-        Deploy.Key[] memory keys =
-            abi.decode(vm.parseJson(vm.readFile("script/jwks.json"), ".keys"), (Deploy.Key[]));
+        (string[] memory kids, bytes[] memory moduli) = loadKeys();
         vm.startBroadcast();
-        for (uint256 i; i < keys.length; ++i) {
-            if (keccak256(mp.signingKeys(keccak256(bytes(keys[i].kid)))) != keccak256(keys[i].modulus)) {
-                mp.setSigningKey(keys[i].kid, keys[i].modulus);
+        for (uint256 i; i < kids.length; ++i) {
+            if (keccak256(mp.signingKeys(keccak256(bytes(kids[i])))) != keccak256(moduli[i])) {
+                mp.proposeSigningKey(kids[i], moduli[i]);
+                console.log("proposed", kids[i]);
             }
         }
         vm.stopBroadcast();

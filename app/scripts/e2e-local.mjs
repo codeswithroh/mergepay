@@ -1,8 +1,8 @@
 // End-to-end against anvil (--chain-id 5042) + `wrangler dev`: deploy, fund, then push GitHub-shaped
 // OIDC tokens (signed by a local key registered as a GitHub kid) through the relayer.
 // Usage: anvil --chain-id 5042 & npx wrangler dev --var CONTRACT:<addr> ... ; node scripts/e2e-local.mjs
-import { generateKeyPairSync, createSign } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { generateKeyPairSync, createSign, createPrivateKey } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, defineChain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -18,18 +18,20 @@ const w = (account) => createWalletClient({ chain, transport: http(), account })
 const art = JSON.parse(readFileSync(new URL("../../contracts/out/MergePay.sol/MergePay.json", import.meta.url)));
 const { abi } = art;
 
+// One throwaway RSA key per run, registered at deploy as a GitHub "kid".
+const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const kid = "local-e2e";
+const modulus = "0x" + Buffer.from(key.publicKey.export({ format: "jwk" }).n, "base64url").toString("hex");
+
 let address = process.env.CONTRACT;
 if (!address) {
-  const hash = await w(owner).deployContract({ abi, bytecode: art.bytecode.object, args: [owner.address] });
+  const hash = await w(owner).deployContract({ abi, bytecode: art.bytecode.object, args: [owner.address, [kid], [modulus]] });
   address = (await pub.waitForTransactionReceipt({ hash })).contractAddress;
+  writeFileSync("/tmp/mergepay-e2e-key.pem", key.privateKey.export({ type: "pkcs8", format: "pem" }));
   console.log(`deployed ${address}\nnow start: npx wrangler dev --var CONTRACT:${address} --var RPC_URL:${RPC}\nthen rerun with CONTRACT=${address}`);
   process.exit(0);
 }
-
-const key = generateKeyPairSync("rsa", { modulusLength: 2048 });
-const kid = `local-${Date.now()}`;
-const modulus = "0x" + Buffer.from(key.publicKey.export({ format: "jwk" }).n, "base64url").toString("hex");
-await pub.waitForTransactionReceipt({ hash: await w(owner).writeContract({ address, abi, functionName: "setSigningKey", args: [kid, modulus] }) });
+const signer = createPrivateKey(readFileSync("/tmp/mergepay-e2e-key.pem"));
 
 const issue = BigInt(process.env.ISSUE ?? Math.floor(Math.random() * 1e6));
 const repoId = BigInt(process.env.REPO_ID ?? 123456);
@@ -53,7 +55,7 @@ function jwt(claims) {
     repository_id: String(repoId), repository: repoName, repository_owner_id: "9001",
     actor_id: userId, actor: login, job_workflow_ref: WF, ...claims,
   })}`;
-  return `${input}.${createSign("RSA-SHA256").update(input).sign(key.privateKey).toString("base64url")}`;
+  return `${input}.${createSign("RSA-SHA256").update(input).sign(signer).toString("base64url")}`;
 }
 const post = (path, body) =>
   fetch(`${RELAYER}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());

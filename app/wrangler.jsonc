@@ -10,9 +10,10 @@
   // Indexes MergePay events into KV every minute (Arc caps eth_getLogs at a few thousand blocks).
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
-    "CONTRACT": "0x0000000000000000000000000000000000000000",
-    "DEPLOY_BLOCK": "0",
+    "CONTRACT": "0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD",
+    "DEPLOY_BLOCK": "22484520",
     "RPC_URL": "https://rpc.mainnet.arc.io",
+    "RPC_FALLBACK": "https://arc.drpc.org",
     "EXPLORER": "https://explorer.arc.io",
     "WORKFLOW_REPO": "codeswithroh/mergepay",
     "WORKFLOW_REF": "codeswithroh/mergepay/.github/workflows/award.yml@refs/tags/v1"

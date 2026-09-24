@@ -25,11 +25,12 @@ contract MergePayTest is Test {
         wallet = vm.parseJsonAddress(fx, ".wallet");
         wallet2 = vm.parseJsonAddress(fx, ".wallet2");
 
-        deployCodeTo("MergePay.sol:MergePay", abi.encode(owner), at);
+        string[] memory kids = new string[](1);
+        bytes[] memory moduli = new bytes[](1);
+        kids[0] = vm.parseJsonString(fx, ".kid");
+        moduli[0] = vm.parseJsonBytes(fx, ".modulus");
+        deployCodeTo("MergePay.sol:MergePay", abi.encode(owner, kids, moduli), at);
         mp = MergePay(at);
-
-        vm.prank(owner);
-        mp.setSigningKey(vm.parseJsonString(fx, ".kid"), vm.parseJsonBytes(fx, ".modulus"));
 
         vm.warp(vm.parseJsonUint(fx, ".t"));
         vm.deal(funder, 1_000e18);
@@ -289,8 +290,62 @@ contract MergePayTest is Test {
         mp.link(input, sig, wallet);
     }
 
-    function test_onlyOwnerSetsKeys() public {
+    // --- signing-key timelock ----------------------------------------------------------------------
+
+    function test_onlyOwnerProposesKeys() public {
         vm.expectRevert(MergePay.NotOwner.selector);
-        mp.setSigningKey("x", hex"01");
+        mp.proposeSigningKey("x", new bytes(256));
+        vm.expectRevert(MergePay.NotOwner.selector);
+        mp.revokeSigningKey("x");
+    }
+
+    function test_newKeyWaitsForDelay_andFundersCanExit() public {
+        bytes32 id = _fund(50e18);
+        bytes memory m = new bytes(256);
+        m[0] = 0x01;
+        vm.prank(owner);
+        mp.proposeSigningKey("new-kid", m);
+        assertEq(mp.pendingKeyChanges(), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadToken.selector, "key delay"));
+        mp.activateSigningKey("new-kid");
+
+        // While a key change is pending, a funder can leave before the bounty's expiry.
+        uint256 before = funder.balance;
+        vm.prank(funder);
+        mp.refund(id);
+        assertEq(funder.balance, before + 50e18);
+
+        vm.warp(block.timestamp + 3 days);
+        mp.activateSigningKey("new-kid"); // anyone can activate
+        assertEq(mp.signingKeys(keccak256("new-kid")), m);
+        assertEq(mp.pendingKeyChanges(), 0);
+    }
+
+    function test_noEarlyRefundWithoutPendingKey() public {
+        bytes32 id = _fund(50e18);
+        vm.prank(funder);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "not expired"));
+        mp.refund(id);
+    }
+
+    function test_cancelKeyProposal() public {
+        vm.startPrank(owner);
+        mp.proposeSigningKey("new-kid", new bytes(256));
+        mp.cancelSigningKey("new-kid");
+        vm.stopPrank();
+        assertEq(mp.pendingKeyChanges(), 0);
+        vm.warp(block.timestamp + 3 days);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadToken.selector, "not proposed"));
+        mp.activateSigningKey("new-kid");
+    }
+
+    function test_revokedKeyStopsVerifying() public {
+        _fund(50e18);
+        vm.prank(owner);
+        mp.revokeSigningKey(vm.parseJsonString(fx, ".kid"));
+        (bytes memory input, bytes memory sig) = _tok("award");
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadToken.selector, "kid"));
+        mp.award(input, sig, ISSUE, ALICE);
     }
 }
