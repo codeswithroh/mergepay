@@ -168,9 +168,9 @@
             <ul class="checks">
               <li><h4>The PR closes the issue</h4><p>Link it in GitHub or write “Fixes #N” in the PR body. One PR can close, and claim, several bounties.</p></li>
               <li><h4>It actually gets merged</h4><p>Only merged PRs count. A maintainer's merge is the bar, and closed-without-merge pays nothing.</p></li>
-              <li><h4>You're the author</h4><p>The PR author's GitHub ID is inside the signed token. Nobody else can redirect the payout.</p></li>
+              <li><h4>You wrote it, or your agent did</h4><p>The recipient's GitHub ID is inside the signed token. If a coding agent opened the PR from a bot account, the human it's assigned to gets paid, not the bot.</p></li>
               <li><h4>The workflow is the pinned one</h4><p>Each bounty stores the exact workflow version allowed to award it. Forks and edited copies are rejected.</p></li>
-              <li><h4>Link a wallet anytime</h4><p>Before or after the merge. Awards wait in the contract under your GitHub ID until you link.</p></li>
+              <li><h4>Link a wallet within 180 days</h4><p>Before or after the merge. Awards wait in the contract under your GitHub ID. If nobody claims one for 180 days, it goes back to the funders.</p></li>
               <li><h4>Before the deadline</h4><p>Unclaimed bounties become refundable after their expiry, and each funder takes back exactly what they put in.</p></li>
             </ul>
             <a class="btn" href="/app">Open the app →</a>
@@ -268,6 +268,14 @@
           <details class="win" open>
             <summary class="titlebar"><i></i><i></i><span>What if nobody fixes it?</span></summary>
             <p class="win-body">After the expiry you chose, every funder can reclaim exactly what they put in, straight from the contract.</p>
+          </details>
+          <details class="win" open>
+            <summary class="titlebar"><i></i><i></i><span>My coding agent opens the PRs. Who gets paid?</span></summary>
+            <p class="win-body">You do. If the agent opens the PR under your account, you're the author. If it opens the PR from its own bot account (Copilot, Claude and others can), the payout goes to the human the PR is assigned to. MergePay never takes a wallet address from PR text an agent wrote, so a prompt injection can't redirect the money.</p>
+          </details>
+          <details class="win" open>
+            <summary class="titlebar"><i></i><i></i><span>What if the winner never claims?</span></summary>
+            <p class="win-body">The award waits 180 days for them to link a wallet. After that, anyone can send it back to the funders, split by what each put in. Winners who link in time are never affected.</p>
           </details>
           <details class="win" open>
             <summary class="titlebar"><i></i><i></i><span>What does it cost?</span></summary>

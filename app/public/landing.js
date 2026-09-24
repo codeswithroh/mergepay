@@ -3,7 +3,7 @@ import { $, cfg, deployed, usd, esc, ago, short, loadBounties, statusPill, total
 // ---------------------------------------------------------------------------------------------
 // activity feed (indexed by the worker from on-chain events)
 
-const ICON = { funded: "$", awarded: "⎇", paid: "✔", linked: "⚭", refunded: "↩" };
+const ICON = { funded: "$", awarded: "⎇", paid: "✔", linked: "⚭", refunded: "↩", returned: "↩" };
 
 function feedLine(i) {
   const who = i.login ? `@${esc(i.login)}` : i.user ? `user ${esc(i.user)}` : "";
@@ -14,6 +14,7 @@ function feedLine(i) {
     case "paid": return [`${usd(i.amount)} USDC → ${who}`, "paid"];
     case "linked": return [`${who} linked a wallet`, "linked"];
     case "refunded": return [`${usd(i.amount)} USDC refunded`, "refund"];
+    case "returned": return [`${usd(i.amount)} USDC unclaimed by ${who}`, "returned to funders"];
   }
   return [i.kind, ""];
 }

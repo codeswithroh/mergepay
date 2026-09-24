@@ -56,6 +56,21 @@ The contract requires:
 
 Any awards held for that user are delivered right away.
 
+### 4. Built for coding agents
+Many PRs are now opened by coding agents. If the agent uses the contributor's account, nothing changes. If it opens the
+PR from its **own bot account** (`user.type == "Bot"`), a bot can't link a wallet. So `award.yml` pays the
+**first human assignee** instead: the person who handed the issue to the agent. Assignees are read live
+from the API, so a maintainer can fix the assignment and re-run the job. If nobody is assigned, the workflow
+comments on the PR instead of paying.
+
+The payout address never comes from PR text. An agent can be prompt-injected into writing an attacker's
+address into a PR body, but the recipient is always a GitHub user ID inside GitHub's signed token.
+
+### 5. Unclaimed awards go back to funders
+An award waits `CLAIM_WINDOW` (180 days) for its recipient to link a wallet. After that, anyone can call
+`returnUnclaimed(id)`, and each funder `refund`s their pro-rata share of the payout. A recipient who linked in
+time is never affected, even if a delivery failed.
+
 ### Relayer
 [`app/src/worker.ts`](app/src/worker.ts) is a Cloudflare Worker that also serves the web UI. It splits the
 JWT, simulates the call, and pays gas. It **can't forge or redirect anything**: every field that
@@ -78,7 +93,7 @@ matters is inside GitHub's signature. Anyone can run one.
 ## Repo layout
 
 ```
-contracts/   Foundry: MergePay.sol + Base64Url / JsonClaims / RsaSha256 libs, 22 tests
+contracts/   Foundry: MergePay.sol + Base64Url / JsonClaims / RsaSha256 libs, 26 tests
 .github/     reusable award.yml and link.yml workflows
 examples/    what repos and contributors copy
 app/         Cloudflare Worker: relayer API + static web app (viem, no build step)
@@ -88,7 +103,7 @@ app/         Cloudflare Worker: relayer API + static web app (viem, no build ste
 
 ```bash
 # contracts
-cd contracts && forge test -vv            # 22 tests, incl. forged/tampered/replayed tokens
+cd contracts && forge test -vv            # 26 tests, incl. forged/tampered/replayed tokens
 node scripts/gen-fixtures.mjs             # regenerate signed test tokens
 
 # local end-to-end: anvil + worker + GitHub-shaped tokens through the relayer

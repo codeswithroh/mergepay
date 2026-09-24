@@ -20,7 +20,10 @@ import {RsaSha256} from "./lib/RsaSha256.sol";
 ///   2. link()  — a contributor proves "GitHub user #id controls wallet 0x…" by running a
 ///                workflow_dispatch job in a repo they own. Can happen before or after payout.
 ///   3. award() — when a PR closing the issue is merged, the pinned workflow mints an OIDC token
-///                whose audience names the issue and PR author; anyone can submit it here.
+///                whose audience names the issue and the recipient (the PR author, or for a PR
+///                opened by a coding-agent bot, the human it was assigned to); anyone can submit it.
+///   4. returnUnclaimed() — an award whose recipient never links a wallet within CLAIM_WINDOW
+///                goes back to the funders, pro rata, instead of sitting in the contract forever.
 contract MergePay {
     using JsonClaims for bytes;
 
@@ -37,6 +40,8 @@ contract MergePay {
     uint256 public constant MAX_RELAYER_FEE = 1e18;
     /// Tolerated clock skew for `nbf` (Arc timestamps are non-decreasing, sub-second blocks).
     uint256 private constant SKEW = 60;
+    /// How long an award waits for its recipient to link a wallet before funders can take it back.
+    uint256 public constant CLAIM_WINDOW = 180 days;
 
     // ---------------------------------------------------------------------------------------------
     // Storage
@@ -50,6 +55,8 @@ contract MergePay {
         uint64 issue;
         uint64 expiry; // after this, unawarded funds are refundable
         uint64 awardedTo; // GitHub user id; 0 = open
+        uint64 awardedAt; // block timestamp of the award
+        uint256 returned; // payout sent back to funders after CLAIM_WINDOW; 0 = not returned
     }
 
     address public owner;
@@ -90,6 +97,7 @@ contract MergePay {
     event Awarded(bytes32 indexed bountyId, uint64 indexed userId, uint256 payout, address relayer, uint256 fee);
     event Linked(uint64 indexed userId, string login, address wallet);
     event Paid(uint64 indexed userId, address indexed wallet, uint256 amount);
+    event Returned(bytes32 indexed bountyId, uint64 indexed userId, uint256 amount);
 
     error NotOwner();
     error BadToken(string reason);
@@ -189,17 +197,42 @@ contract MergePay {
         }
     }
 
-    /// @notice Reclaim your contribution once an unawarded bounty has expired.
+    /// @notice Take back your contribution: in full once an unawarded bounty has expired, or your
+    ///         pro-rata share of the payout once an unclaimed award has been returned.
     function refund(bytes32 id) external {
         Bounty storage b = bounties[id];
-        if (b.awardedTo != 0) revert BadBounty("awarded");
-        if (block.timestamp < b.expiry) revert BadBounty("not expired");
-        uint256 amount = contributions[id][msg.sender];
-        if (amount == 0) revert BadBounty("nothing");
+        uint256 c = contributions[id][msg.sender];
+        if (c == 0) revert BadBounty("nothing");
+        uint256 amount;
+        if (b.awardedTo == 0) {
+            if (block.timestamp < b.expiry) revert BadBounty("not expired");
+            amount = c;
+            b.amount -= c;
+        } else {
+            if (b.returned == 0) revert BadBounty("awarded");
+            // b.amount is frozen at award time, so every funder's share uses the same denominator.
+            amount = (c * b.returned) / b.amount;
+        }
         contributions[id][msg.sender] = 0;
-        b.amount -= amount;
         _send(msg.sender, amount);
         emit Refunded(id, msg.sender, amount);
+    }
+
+    /// @notice Send an award back to its funders when the recipient never linked a wallet within
+    ///         CLAIM_WINDOW. Callable by anyone. A recipient who links in time is never affected, and
+    ///         one who has linked keeps the award even if a delivery failed (they can `deliver`).
+    function returnUnclaimed(bytes32 id) external {
+        Bounty storage b = bounties[id];
+        uint64 userId = b.awardedTo;
+        if (userId == 0) revert BadBounty("not awarded");
+        if (b.returned != 0) revert BadBounty("returned");
+        if (block.timestamp < uint256(b.awardedAt) + CLAIM_WINDOW) revert BadBounty("claim window");
+        if (walletOf[userId] != address(0)) revert BadBounty("claimed");
+        uint256 payout = b.amount - (b.relayerFee < b.amount ? b.relayerFee : b.amount);
+        if (payout == 0 || pending[userId] < payout) revert BadBounty("nothing");
+        pending[userId] -= payout;
+        b.returned = payout;
+        emit Returned(id, userId, payout);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -230,6 +263,7 @@ contract MergePay {
         if (keccak256(claims.getString("job_workflow_ref")) != b.workflowRefHash) revert BadToken("workflow");
 
         b.awardedTo = userId;
+        b.awardedAt = uint64(block.timestamp);
         uint256 total = b.amount;
         uint256 fee = b.relayerFee < total ? b.relayerFee : total;
         uint256 payout = total - fee;

@@ -77,7 +77,7 @@
               <div class="titlebar"><i></i><i></i><span>in-progress.app</span></div>
               <div class="win-body">
                 <h3 class="win-h">Bounties you're working on</h3>
-                <p class="sub">Open pull requests you authored on funded repos. If the PR says “Fixes #N” and N has a bounty, merging it pays you.</p>
+                <p class="sub">Open pull requests you authored on funded repos. If the PR says “Fixes #N” and N has a bounty, merging it pays you. Using a coding agent that opens PRs from a bot account? Make sure the PR is <b>assigned to you</b>, and you get paid instead of the bot.</p>
                 <div id="wip" class="list"><p class="loading-line">Loading…</p></div>
               </div>
             </div>
@@ -91,7 +91,7 @@
               <div class="win-body">
                 <span class="ghost-num" id="pay-num">00</span>
                 <h3 class="win-h">Payout pipeline</h3>
-                <p class="sub">Each bounty goes Merged → Awarded on Arc → Paid to your wallet. Awards wait in the contract until you link a wallet.</p>
+                <p class="sub">Each bounty goes Merged → Awarded on Arc → Paid to your wallet. Awards wait in the contract for up to 180 days until you link a wallet. After that, funders can take them back.</p>
                 <div id="payouts" class="list"></div>
               </div>
             </div>
@@ -157,7 +157,7 @@
             <div class="win-body">
               <span class="ghost-num" id="spon-num">00</span>
               <h3 class="win-h">Bounties you funded</h3>
-              <p class="sub">Funds stay in the contract until a merge pays them out. After the deadline, unclaimed funds come back to you with one click.</p>
+              <p class="sub">Funds stay in the contract until a merge pays them out. If nothing merges by the deadline, or the winner never links a wallet within 180 days, your share comes back with one click.</p>
               <div id="spon" class="list"><p class="loading-line">Connect a wallet to see what you've funded. <a href="#fund">Or fund a new issue →</a></p></div>
             </div>
           </div>

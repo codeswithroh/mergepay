@@ -142,7 +142,7 @@ async function renderOverview() {
     deployed ? Promise.all([read("walletOf", [uid]), read("pending", [uid])]) : Promise.resolve([ZERO, 0n]),
   ]);
   const mine = all.filter((b) => b.awardedTo === uid);
-  const awardedTotal = mine.reduce((s, b) => s + b.payout, 0n);
+  const awardedTotal = mine.filter((b) => b.status !== "returned").reduce((s, b) => s + b.payout, 0n);
   const hasWallet = linked !== ZERO;
 
   $("acct-blurb").innerHTML = hasWallet
@@ -169,13 +169,20 @@ function renderPayouts(mine, hasWallet) {
   el.innerHTML = mine
     .map((b) => {
       const paid = b.status === "paid";
+      const last = paid
+        ? "✔ Paid"
+        : b.status === "returned"
+          ? "↩ Unclaimed · returned"
+          : hasWallet
+            ? "… Delivering"
+            : `○ Link wallet · ${b.claimDaysLeft}d left`;
       return `<div class="pipe">
         <div class="pipe-top">
           <a class="pipe-title" href="${issueUrl(b.repo, b.issue)}" target="_blank" rel="noopener" data-title="${esc(b.repo)}#${b.issue}">${esc(b.repo)}#${b.issue}</a>
           <span class="pipe-amt">${usd(b.payout)} USDC</span>
         </div>
         <div class="pipe-bar">
-          <span class="on">✔ Merged</span><span class="on">✔ Awarded on Arc</span><span class="${paid ? "on" : "wait"}">${paid ? "✔ Paid" : hasWallet ? "… Delivering" : "○ Link wallet"}</span>
+          <span class="on">✔ Merged</span><span class="on">✔ Awarded on Arc</span><span class="${paid ? "on" : "wait"}">${last}</span>
         </div>
       </div>`;
     })
@@ -195,9 +202,16 @@ async function renderWip(user, all) {
     return;
   }
   try {
-    const q = `is:pr is:open author:${user.login} ${repos.map((r) => `repo:${r}`).join(" ")}`;
-    const res = await gh(`search/issues?q=${encodeURIComponent(q)}&per_page=30`);
-    const rows = res.items.map((pr) => {
+    // Your own PRs, plus PRs a coding agent opened from a bot account and assigned to you.
+    const scope = repos.map((r) => `repo:${r}`).join(" ");
+    const [authored, assigned] = await Promise.all(
+      [`author:${user.login}`, `assignee:${user.login}`].map((who) =>
+        gh(`search/issues?q=${encodeURIComponent(`is:pr is:open ${who} ${scope}`)}&per_page=30`)
+      )
+    );
+    const seen = new Set();
+    const prs = [...authored.items, ...assigned.items.filter((p) => p.user.type === "Bot")].filter((p) => !seen.has(p.id) && seen.add(p.id));
+    const rows = prs.map((pr) => {
       const repo = pr.repository_url.split("/repos/")[1];
       const nums = [...(pr.body ?? "").matchAll(FIXES)].map((m) => BigInt(m[1]));
       const hits = open.filter((b) => b.repo === repo && nums.includes(b.issue));
@@ -212,7 +226,7 @@ async function renderWip(user, all) {
     el.innerHTML = rows
       .map(
         ({ pr, repo, hits }) => `<div class="row-item">
-          <div><a href="${pr.html_url}" target="_blank" rel="noopener">${esc(pr.title)}</a><span class="muted mono">${esc(repo)} · #${pr.number} · opened ${isoAgo(pr.created_at)}</span></div>
+          <div><a href="${pr.html_url}" target="_blank" rel="noopener">${esc(pr.title)}</a><span class="muted mono">${esc(repo)} · #${pr.number} · opened ${isoAgo(pr.created_at)}${pr.user.type === "Bot" ? ` by @${esc(pr.user.login)} for you` : ""}</span></div>
           ${hits.length
             ? `<span class="pill paid">Closes #${hits.map((h) => h.issue).join(", #")} · ${usd(hits.reduce((s, h) => s + h.payout, 0n))} USDC</span>`
             : `<span class="pill open" title="Add “Fixes #N” to the PR body to claim a bounty">No bounty linked</span>`}
@@ -360,18 +374,25 @@ async function renderSponsorships() {
     .map(
       ({ b, c }) => `<div class="row-item">
         <div><a href="${issueUrl(b.repo, b.issue)}" target="_blank" rel="noopener" data-title="${esc(b.repo)}#${b.issue}">${esc(b.repo)}#${b.issue}</a><span class="muted mono">you put in ${usd(c)} USDC of ${usd(b.amount)}</span></div>
-        <div class="right">${statusPill(b)}${b.status === "expired" ? `<button class="btn btn-sm" data-refund="${b.id}">Refund ${usd(c)}</button>` : ""}</div>
+        <div class="right">${statusPill(b)}${
+          b.status === "expired" || b.status === "returned"
+            ? `<button class="btn btn-sm" data-refund="${b.id}">Take back ${usd(b.status === "returned" ? (c * b.returned) / b.amount : c)}</button>`
+            : b.returnable
+              ? `<button class="btn btn-sm" data-return="${b.id}" title="The recipient never linked a wallet in 180 days">Return unclaimed</button>`
+              : ""
+        }</div>
       </div>`
     )
     .join("");
   fillTitles(el);
-  el.querySelectorAll("[data-refund]").forEach((btn) =>
+  el.querySelectorAll("[data-refund], [data-return]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       btn.disabled = true;
       try {
-        const hash = await wallet.writeContract({ account, address: cfg.contract, abi, functionName: "refund", args: [btn.dataset.refund] });
+        const [functionName, id] = btn.dataset.refund ? ["refund", btn.dataset.refund] : ["returnUnclaimed", btn.dataset.return];
+        const hash = await wallet.writeContract({ account, address: cfg.contract, abi, functionName, args: [id] });
         await pub.waitForTransactionReceipt({ hash, pollingInterval: 250 });
-        toast("Refunded");
+        toast(functionName === "refund" ? "USDC sent back to you" : "Returned. You can now take back your share");
         await bounties(true);
         renderSponsorships();
       } catch (e) {

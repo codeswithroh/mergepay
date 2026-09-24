@@ -3,6 +3,7 @@ import { createPublicClient, defineChain, formatUnits, http } from "https://esm.
 import { abi } from "/abi.js";
 export { abi };
 
+export const CLAIM_WINDOW = 180n * 86400n;
 export const ZERO = "0x0000000000000000000000000000000000000000";
 export const $ = (id) => document.getElementById(id);
 
@@ -74,17 +75,25 @@ export async function loadBounties(limit = 100n) {
   );
   return data.map((b, i) => {
     let status = "open";
-    if (b.awardedTo !== 0n) status = pending.get(b.awardedTo) > 0n ? "held" : "paid";
+    if (b.returned > 0n) status = "returned";
+    else if (b.awardedTo !== 0n) status = pending.get(b.awardedTo) > 0n ? "held" : "paid";
     else if (b.expiry <= now) status = "expired";
     const fee = b.relayerFee < b.amount ? b.relayerFee : b.amount;
-    return { id: ids[i], repo: names[i], ...b, status, payout: b.amount - fee, daysLeft: Number((b.expiry - now) / 86400n) };
+    const claimDeadline = b.awardedAt + CLAIM_WINDOW;
+    return {
+      id: ids[i], repo: names[i], ...b, status, payout: b.amount - fee,
+      daysLeft: Number((b.expiry - now) / 86400n),
+      claimDaysLeft: b.awardedTo ? Math.max(0, Number((claimDeadline - now) / 86400n)) : null,
+      returnable: status === "held" && now >= claimDeadline,
+    };
   });
 }
 
 export function statusPill(b) {
   switch (b.status) {
     case "paid": return `<span class="pill paid">Paid</span>`;
-    case "held": return `<span class="pill held">Awarded · awaiting wallet</span>`;
+    case "held": return `<span class="pill held">Awarded · link wallet · ${b.claimDaysLeft}d</span>`;
+    case "returned": return `<span class="pill expired">Unclaimed · returned</span>`;
     case "expired": return `<span class="pill expired">Expired · refundable</span>`;
     default: return `<span class="pill open">Open · ${b.daysLeft}d left</span>`;
   }

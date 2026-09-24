@@ -92,7 +92,7 @@ contract MergePayTest is Test {
         vm.deal(other, 5e18);
         vm.prank(other);
         mp.fund{value: 5e18}(REPO, ISSUE, "acme/widgets", "ignored", 0, 0);
-        (uint256 amount,,,,,,) = mp.bounties(id);
+        (uint256 amount,,,,,,,,) = mp.bounties(id);
         assertEq(amount, 15e18);
 
         vm.prank(other);
@@ -118,6 +118,70 @@ contract MergePayTest is Test {
         assertEq(ids.length, 1);
         (ids,,) = mp.listBounties(5, 10);
         assertEq(ids.length, 0);
+    }
+
+    // --- unclaimed awards go back to funders ------------------------------------------------------
+
+    function test_unclaimedAwardReturnsToFundersProRata() public {
+        bytes32 id = _fund(30e18);
+        address other = makeAddr("other");
+        vm.deal(other, 10e18);
+        vm.prank(other);
+        mp.fund{value: 10e18}(REPO, ISSUE, "acme/widgets", "", 0, 0);
+        _award("award");
+        uint256 payout = 40e18 - FEE;
+        assertEq(mp.pending(ALICE), payout);
+
+        // too early
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "claim window"));
+        mp.returnUnclaimed(id);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "awarded"));
+        vm.prank(funder);
+        mp.refund(id);
+
+        // Real OIDC tokens expire in minutes; move time without re-verifying one.
+        vm.warp(block.timestamp + 180 days);
+        mp.returnUnclaimed(id);
+        assertEq(mp.pending(ALICE), 0);
+
+        vm.prank(funder);
+        mp.refund(id);
+        vm.prank(other);
+        mp.refund(id);
+        assertEq(funder.balance, 1_000e18 - 30e18 + (30e18 * payout) / 40e18, "funder 3/4");
+        assertEq(other.balance, (10e18 * payout) / 40e18, "other 1/4");
+
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "returned"));
+        mp.returnUnclaimed(id);
+        vm.prank(funder);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "nothing"));
+        mp.refund(id);
+    }
+
+    function test_linkedRecipientKeepsAwardAfterWindow() public {
+        _link("link", wallet);
+        bytes32 id = _fund(50e18);
+        _award("award");
+        assertEq(wallet.balance, 50e18 - FEE);
+        vm.warp(block.timestamp + 365 days);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "claimed"));
+        mp.returnUnclaimed(id);
+    }
+
+    function test_linkBeforeReturnStillPays() public {
+        bytes32 id = _fund(50e18);
+        _award("award");
+        _link("link", wallet);
+        assertEq(wallet.balance, 50e18 - FEE, "paid on link");
+        vm.warp(block.timestamp + 181 days);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "claimed"));
+        mp.returnUnclaimed(id);
+    }
+
+    function test_returnUnclaimed_rejectsOpenBounty() public {
+        bytes32 id = _fund(50e18);
+        vm.expectRevert(abi.encodeWithSelector(MergePay.BadBounty.selector, "not awarded"));
+        mp.returnUnclaimed(id);
     }
 
     function test_relinkWithNewerToken() public {

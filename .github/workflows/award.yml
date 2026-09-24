@@ -50,35 +50,67 @@ jobs:
           echo "issues=$issues" >> "$GITHUB_OUTPUT"
           echo "Closes: ${issues:-none}"
 
-      - name: Prove merge and claim bounties
+      # Coding agents (Copilot, Claude, Devin, ...) often open PRs from a bot account. A bot can't
+      # link a wallet, so for bot-authored PRs we pay the human the PR is assigned to: the person
+      # who handed the issue to the agent. Assignees are read live, so a maintainer can fix the
+      # assignment and re-run this job. Human-authored PRs always pay the author.
+      - name: Decide who gets paid
+        id: recipient
         if: steps.issues.outputs.issues != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: |
+          set -euo pipefail
+          if [ "$AUTHOR_TYPE" != "Bot" ]; then
+            printf 'id=%s\nlogin=%s\nvia=\n' "$AUTHOR_ID" "$AUTHOR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          human=$(gh api "repos/$REPO/pulls/$PR" --jq '[.assignees[] | select(.type == "User")][0] // empty | "\(.id) \(.login)"')
+          if [ -z "$human" ]; then
+            echo "::warning::PR opened by bot @$AUTHOR with no human assignee; not paying."
+            gh pr comment "$PR" --repo "$REPO" --body "⏸️ **MergePay:** this PR was opened by @${AUTHOR}, a bot, so the bounty goes to the human it's assigned to, and nobody is assigned. Assign the person who handed this issue to the agent, then re-run the **MergePay** job on this PR."
+            echo "id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf 'id=%s\nlogin=%s\nvia=%s\n' "${human%% *}" "${human#* }" "$AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "Bot-authored PR: paying assignee @${human#* } (opened by @$AUTHOR)"
+
+      - name: Prove merge and claim bounties
+        if: steps.issues.outputs.issues != '' && steps.recipient.outputs.id != ''
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUES: ${{ steps.issues.outputs.issues }}
           CONTRACT: ${{ inputs.contract }}
           RELAYER: ${{ inputs.relayer }}
           EXPLORER: ${{ inputs.explorer }}
-          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          RECIPIENT_ID: ${{ steps.recipient.outputs.id }}
+          RECIPIENT: ${{ steps.recipient.outputs.login }}
+          VIA: ${{ steps.recipient.outputs.via }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           contract=$(printf '%s' "$CONTRACT" | tr 'A-F' 'a-f')
+          by=""; [ -n "$VIA" ] && by=" (PR opened by @${VIA} on their behalf)"
           notes=""
           for issue in $ISSUES; do
-            aud="mergepay:${contract}:${issue}:${AUTHOR_ID}"
+            aud="mergepay:${contract}:${issue}:${RECIPIENT_ID}"
             token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
               "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg a "$aud" '$a|@uri')" | jq -r .value)
             echo "::add-mask::$token"
-            body=$(jq -n --arg t "$token" --argjson i "$issue" --argjson u "$AUTHOR_ID" '{token:$t,issue:$i,userId:$u}')
+            body=$(jq -n --arg t "$token" --argjson i "$issue" --argjson u "$RECIPIENT_ID" '{token:$t,issue:$i,userId:$u}')
             res=$(curl -sS -X POST "${RELAYER%/}/api/relay/award" -H 'content-type: application/json' -d "$body" || echo '{"ok":false,"error":"relayer unreachable"}')
             echo "#$issue -> $res"
             if [ "$(jq -r .ok <<<"$res")" = "true" ]; then
               tx=$(jq -r .txHash <<<"$res"); amount=$(jq -r .payout <<<"$res"); paid=$(jq -r .delivered <<<"$res")
               if [ "$paid" = "true" ]; then
-                line="💸 **${amount} USDC** paid to @${AUTHOR} for #${issue} on Arc — [tx](${EXPLORER%/}/tx/${tx})"
+                line="💸 **${amount} USDC** paid to @${RECIPIENT} for #${issue}${by} on Arc — [tx](${EXPLORER%/}/tx/${tx})"
               else
-                line="🔒 **${amount} USDC** awarded to @${AUTHOR} for #${issue} — [tx](${EXPLORER%/}/tx/${tx}). Link a wallet to receive it: ${RELAYER%/}/#link"
+                line="🔒 **${amount} USDC** awarded to @${RECIPIENT} for #${issue}${by} — [tx](${EXPLORER%/}/tx/${tx}). Link a wallet within 180 days to receive it: ${RELAYER%/}/app#wallet"
               fi
               notes="${notes}${line}"$'\n'
             fi

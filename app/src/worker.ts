@@ -113,7 +113,7 @@ async function handleLink(env: Env, body: any) {
 // at a few thousand blocks, so a cron walks forward from a cursor and keeps the latest events.
 
 type FeedItem = {
-  kind: "funded" | "awarded" | "paid" | "linked" | "refunded";
+  kind: "funded" | "awarded" | "paid" | "linked" | "refunded" | "returned";
   ts: number;
   tx: string;
   repo?: string;
@@ -176,6 +176,9 @@ async function indexFeed(env: Env): Promise<FeedState> {
       case "Linked":
         logins[String(a.userId)] = a.login;
         fresh.push({ ...base, kind: "linked", user: String(a.userId) });
+        break;
+      case "Returned":
+        fresh.push({ ...base, kind: "returned", amount: formatUnits(a.amount, 18), user: String(a.userId) });
         break;
       case "Refunded":
         fresh.push({ ...base, kind: "refunded", amount: formatUnits(a.amount, 18) });

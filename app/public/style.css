@@ -517,3 +517,6 @@ footer {
   .log li { animation: none; opacity: 1; }
   .btn { transition: none; }
 }
+
+.win-body:has(.ghost-num) .sub { padding-right: 96px; }
+@media (max-width: 600px) { .win-body:has(.ghost-num) .sub { padding-right: 0; } }
