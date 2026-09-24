@@ -2,11 +2,16 @@
 name: MergePay
 on:
   pull_request_target:
-    types: [closed]
+    types: [opened, closed]
+  issue_comment:
+    types: [created]      # /claim, /unclaim
+  schedule:
+    - cron: "17 3 * * *"  # release claims idle for 7 days
+  workflow_dispatch:
 
 jobs:
-  mergepay:
-    if: github.event.pull_request.merged
+  award:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged
     uses: codeswithroh/mergepay/.github/workflows/award.yml@v1
     permissions:
       id-token: write       # GitHub signs the merge proof
@@ -16,3 +21,13 @@ jobs:
     with:
       contract: "0xYOUR_MERGEPAY_ADDRESS"
       relayer: https://mergepay.codeswithroh.workers.dev
+
+  claims:
+    if: github.event_name != 'pull_request_target' || github.event.action == 'opened'
+    uses: codeswithroh/mergepay/.github/workflows/claims.yml@v1
+    permissions:
+      issues: write
+      pull-requests: write
+    with:
+      relayer: https://mergepay.codeswithroh.workers.dev
+      release_after_days: 7

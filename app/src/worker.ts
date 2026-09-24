@@ -204,6 +204,25 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
 
+    // Bounties for one repository, used by the claim workflows: GET /api/bounties?repo=<repository_id>
+    if (url.pathname === "/api/bounties") {
+      const repo = url.searchParams.get("repo");
+      if (!repo || !/^\d+$/.test(repo)) return json({ error: "repo must be a numeric repository_id" }, 400);
+      if (!env.CONTRACT || env.CONTRACT === ZERO) return json({ bounties: [] });
+      const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: http() });
+      const [, data] = await pub.readContract({ address: getAddress(env.CONTRACT), abi, functionName: "listBounties", args: [0n, 1000n] });
+      const now = BigInt(Math.floor(Date.now() / 1000));
+      const bounties = data
+        .filter((b) => b.repoId === BigInt(repo))
+        .map((b) => ({
+          issue: Number(b.issue),
+          amount: formatUnits(b.amount, 18),
+          status: b.awardedTo !== 0n ? "awarded" : b.expiry <= now ? "expired" : "open",
+          expiry: Number(b.expiry),
+        }));
+      return json({ bounties });
+    }
+
     if (url.pathname === "/api/feed") {
       let state = await env.FEED.get<FeedState>(`state:${env.CONTRACT}`, "json");
       // No cron in `wrangler dev`, and a cold KV on first deploy: index inline when stale.

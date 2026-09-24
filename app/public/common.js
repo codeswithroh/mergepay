@@ -115,3 +115,18 @@ export function fillTitles(root = document) {
     gh(`repos/${repo}/issues/${n}`).then((i) => (el.textContent = i.title)).catch(() => {});
   });
 }
+
+/** Fill claim chips into any element carrying data-claim="owner/repo#n" (open bounties only). */
+export function fillClaims(root = document) {
+  root.querySelectorAll("[data-claim]").forEach((el) => {
+    const [repo, n] = el.dataset.claim.split("#");
+    gh(`repos/${repo}/issues/${n}`)
+      .then((i) => {
+        const who = (i.assignees ?? []).filter((a) => a.type === "User").map((a) => `@${esc(a.login)}`);
+        el.innerHTML = who.length
+          ? `<span class="claim held-by">🔒 claimed by ${who.join(", ")}</span>`
+          : `<span class="claim free">comment <code>/claim</code> to take it</span>`;
+      })
+      .catch(() => {});
+  });
+}

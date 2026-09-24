@@ -56,6 +56,18 @@ The contract requires:
 
 Any awards held for that user are delivered right away.
 
+### 3½. Claims: one contributor per bounty
+Contributors claim a funded issue by commenting **`/claim`**
+([`claims.yml`](.github/workflows/claims.yml)). The claim is simply the issue's assignee, so maintainers can
+also assign or unassign by hand.
+- One claim at a time per person, per repo. `/unclaim` gives it back.
+- A PR from anyone else that "fixes" a claimed issue gets an automatic heads-up that it won't be paid.
+- A daily job releases claims with no activity (no comment, and no PR opened by or assigned to the claimant
+  that references the issue) for 7 days.
+- At merge, `award.yml` only requests a GitHub-signed proof for the issue's current assignee. An unclaimed
+  or someone-else's issue is skipped and stays funded. The contract needs no change for any of this: it
+  already pays only the GitHub user ID inside GitHub's signature, and the pinned workflow decides who that is.
+
 ### 4. Built for coding agents
 Many PRs are now opened by coding agents. If the agent uses the contributor's account, nothing changes. If it opens the
 PR from its **own bot account** (`user.type == "Bot"`), a bot can't link a wallet. So `award.yml` pays the

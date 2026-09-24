@@ -1,0 +1,170 @@
+# Reusable workflow: claims on funded issues.
+#
+#   /claim     comment on a funded issue -> you're assigned, and only your PR gets paid
+#   /unclaim   give it back
+#   PR opened  that closes a claimed issue but isn't from the claimant -> warned it won't be paid
+#   schedule   claims with no activity for `release_after_days` are released
+#
+# A claim is simply the issue's assignee, so maintainers can also assign or unassign by hand.
+# award.yml enforces it at merge time: it only asks GitHub to sign a proof for the claimant.
+name: MergePay claims
+
+on:
+  workflow_call:
+    inputs:
+      relayer:
+        description: MergePay relayer base URL (used to look up which issues carry bounties)
+        type: string
+        required: true
+      release_after_days:
+        type: number
+        default: 7
+
+jobs:
+  # ------------------------------------------------------------------------------ /claim, /unclaim
+  command:
+    if: github.event_name == 'issue_comment' && !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Handle /claim or /unclaim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.event.repository.id }}
+          ISSUE: ${{ github.event.issue.number }}
+          BODY: ${{ github.event.comment.body }}
+          WHO: ${{ github.event.comment.user.login }}
+          WHO_TYPE: ${{ github.event.comment.user.type }}
+          RELAYER: ${{ inputs.relayer }}
+          DAYS: ${{ inputs.release_after_days }}
+        run: |
+          set -euo pipefail
+          cmd=$(printf '%s' "$BODY" | head -n1 | tr -d '\r' | awk '{print tolower($1)}')
+          case "$cmd" in /claim|/unclaim) ;; *) exit 0 ;; esac
+          [ "$WHO_TYPE" = "User" ] || exit 0
+          reply() { gh issue comment "$ISSUE" --repo "$REPO" --body "$1"; }
+
+          open=$(curl -sSf "${RELAYER%/}/api/bounties?repo=$REPO_ID" | jq -c '[.bounties[] | select(.status == "open")]')
+          amount=$(jq -r --argjson i "$ISSUE" '.[] | select(.issue == $i) | .amount' <<<"$open")
+          if [ -z "$amount" ]; then
+            reply "@$WHO this issue has no open MergePay bounty, so there's nothing to claim."
+            exit 0
+          fi
+          holders=$(gh api "repos/$REPO/issues/$ISSUE" --jq '[.assignees[] | select(.type == "User") | .login] | join(" ")')
+
+          if [ "$cmd" = "/unclaim" ]; then
+            if [[ " $holders " == *" $WHO "* ]]; then
+              gh issue edit "$ISSUE" --repo "$REPO" --remove-assignee "$WHO"
+              reply "🔓 @$WHO released their claim. This ${amount} USDC bounty is open again: comment \`/claim\` to take it."
+            else
+              reply "@$WHO you don't hold a claim on this issue."
+            fi
+            exit 0
+          fi
+
+          if [ -n "$holders" ]; then
+            if [[ " $holders " == *" $WHO "* ]]; then
+              reply "@$WHO this bounty is already yours."
+            else
+              reply "@$WHO this bounty is already claimed by @${holders// / @}. Claims with no activity for ${DAYS} days are released automatically."
+            fi
+            exit 0
+          fi
+
+          # One claim at a time per person, per repository.
+          other=$(gh api "repos/$REPO/issues?assignee=$WHO&state=open&per_page=100" --jq '[.[] | select(.pull_request | not) | .number]' \
+            | jq -r --argjson open "$open" --argjson i "$ISSUE" '[.[] | select(. != $i) | select(. as $n | $open | map(.issue) | index($n))] | first // empty')
+          if [ -n "$other" ]; then
+            reply "@$WHO you already hold the bounty on #$other. Finish it or comment \`/unclaim\` there before claiming another."
+            exit 0
+          fi
+
+          if ! gh issue edit "$ISSUE" --repo "$REPO" --add-assignee "$WHO"; then
+            reply "@$WHO couldn't assign you. A maintainer can assign you by hand, which counts as a claim."
+            exit 1
+          fi
+          reply "🔒 @$WHO claimed this bounty: **${amount} USDC** on Arc. Only a merged PR from @$WHO that closes this issue will be paid.
+
+          - Open a PR with \`Fixes #$ISSUE\` in the description.
+          - Using a coding agent that opens PRs from a bot account? Make sure the PR is assigned to you.
+          - No activity (a PR, commits or a comment here) for ${DAYS} days releases the claim. \`/unclaim\` releases it early."
+
+  # ------------------------------------------------------------------------------ PR from a non-claimant
+  guard:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: write
+    steps:
+      - name: Warn if the PR targets someone else's claim
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.event.repository.id }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          RELAYER: ${{ inputs.relayer }}
+        run: |
+          set -euo pipefail
+          # Bot PRs get their human assignee after opening; award.yml checks them at merge.
+          [ "$AUTHOR_TYPE" = "User" ] || exit 0
+          issues=$(printf '%s' "${BODY:-}" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' | sort -un || true)
+          [ -n "$issues" ] || exit 0
+          open=$(curl -sSf "${RELAYER%/}/api/bounties?repo=$REPO_ID" | jq -c '[.bounties[] | select(.status == "open") | .issue]')
+          notes=""
+          for issue in $issues; do
+            jq -e --argjson i "$issue" 'index($i) != null' <<<"$open" >/dev/null || continue
+            holders=$(gh api "repos/$REPO/issues/$issue" --jq '[.assignees[] | select(.type == "User") | .login] | join(" ")')
+            if [ -z "$holders" ]; then
+              notes="${notes}- #$issue has a MergePay bounty but nobody has claimed it. Comment \`/claim\` on #$issue, or this PR won't be paid."$'\n'
+            elif [[ " $holders " != *" $AUTHOR "* ]]; then
+              notes="${notes}- #$issue is claimed by @${holders// / @}, so this PR won't be paid for it."$'\n'
+            fi
+          done
+          if [ -n "$notes" ]; then
+            printf '⚠️ **MergePay:** heads up, @%s\n\n%s' "$AUTHOR" "$notes" | gh pr comment "$PR" --repo "$REPO" --body-file -
+          fi
+
+  # ------------------------------------------------------------------------------ release stale claims
+  release:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Release claims with no activity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REPO_ID: ${{ github.event.repository.id }}
+          RELAYER: ${{ inputs.relayer }}
+          DAYS: ${{ inputs.release_after_days }}
+        run: |
+          set -euo pipefail
+          now=$(date -u +%s)
+          limit=$(( DAYS * 86400 ))
+          for issue in $(curl -sSf "${RELAYER%/}/api/bounties?repo=$REPO_ID" | jq -r '.bounties[] | select(.status == "open") | .issue'); do
+            state=$(gh api "repos/$REPO/issues/$issue" --jq '.state')
+            [ "$state" = "open" ] || continue
+            for who in $(gh api "repos/$REPO/issues/$issue" --jq '.assignees[] | select(.type == "User") | .login'); do
+              # Latest of: when they were assigned, their comments on the issue, and activity on any PR
+              # that references the issue and was opened by them or assigned to them.
+              last=$(gh api --paginate "repos/$REPO/issues/$issue/timeline?per_page=100" --jq '.[]' | jq -s --arg who "$who" '
+                [ .[] | select(.event == "assigned" and .assignee.login == $who) | .created_at ]
+                + [ .[] | select(.event == "commented" and ((.actor.login // .user.login) == $who)) | .created_at ]
+                + [ .[] | select(.event == "cross-referenced" and .source.issue.pull_request != null
+                        and (.source.issue.user.login == $who or ([.source.issue.assignees[]?.login] | index($who)))) | .source.issue.updated_at ]
+                | map(fromdateiso8601) | max // 0')
+              idle=$(( now - last ))
+              echo "#$issue @$who idle $(( idle / 86400 ))d"
+              if [ "$idle" -gt "$limit" ]; then
+                gh issue edit "$issue" --repo "$REPO" --remove-assignee "$who"
+                gh issue comment "$issue" --repo "$REPO" --body "⌛ @$who's claim was released after ${DAYS} days with no activity. This bounty is open again: comment \`/claim\` to take it."
+              fi
+            done
+          done

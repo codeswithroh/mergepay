@@ -1,4 +1,4 @@
-import { $, cfg, deployed, usd, esc, ago, short, loadBounties, statusPill, totals, fillTitles } from "/common.js";
+import { $, cfg, deployed, usd, esc, ago, short, loadBounties, statusPill, totals, fillTitles, fillClaims } from "/common.js";
 
 // ---------------------------------------------------------------------------------------------
 // activity feed (indexed by the worker from on-chain events)
@@ -69,13 +69,14 @@ async function loadPool() {
     .map(
       (b) => `
       <a class="pool-row" href="https://github.com/${esc(b.repo)}/issues/${b.issue}" target="_blank" rel="noopener">
-        <span class="repo mono">${esc(b.repo)}#${b.issue} <em>↗</em></span>
+        <span class="repo mono">${esc(b.repo)}#${b.issue} <em>↗</em>${b.status === "open" ? `<span data-claim="${esc(b.repo)}#${b.issue}"></span>` : ""}</span>
         <span class="desc" data-title="${esc(b.repo)}#${b.issue}">Issue #${b.issue} on ${esc(b.repo)}</span>
         <span class="right"><b>${usd(b.amount)} USDC</b>${statusPill(b)}</span>
       </a>`
     )
     .join("");
   fillTitles(pool);
+  fillClaims(pool);
 }
 
 loadFeed().catch(() => ($("feed").innerHTML = `<li class="feed-empty">Feed unavailable right now.</li>`));

@@ -1,5 +1,5 @@
 import { createWalletClient, custom, parseUnits, getAddress } from "https://esm.sh/viem@2.56.8";
-import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles } from "/common.js";
+import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles, fillClaims } from "/common.js";
 
 const origin = location.origin;
 const LOGIN_KEY = "mp:login";
@@ -204,11 +204,16 @@ async function renderWip(user, all) {
   try {
     // Your own PRs, plus PRs a coding agent opened from a bot account and assigned to you.
     const scope = repos.map((r) => `repo:${r}`).join(" ");
-    const [authored, assigned] = await Promise.all(
-      [`author:${user.login}`, `assignee:${user.login}`].map((who) =>
+    const [authored, assigned, claimedRes] = await Promise.all([
+      ...[`author:${user.login}`, `assignee:${user.login}`].map((who) =>
         gh(`search/issues?q=${encodeURIComponent(`is:pr is:open ${who} ${scope}`)}&per_page=30`)
-      )
-    );
+      ),
+      gh(`search/issues?q=${encodeURIComponent(`is:issue is:open assignee:${user.login} ${scope}`)}&per_page=30`),
+    ]);
+    const claims = claimedRes.items
+      .map((i) => ({ i, repo: i.repository_url.split("/repos/")[1] }))
+      .map((c) => ({ ...c, b: open.find((b) => b.repo === c.repo && b.issue === BigInt(c.i.number)) }))
+      .filter((c) => c.b);
     const seen = new Set();
     const prs = [...authored.items, ...assigned.items.filter((p) => p.user.type === "Bot")].filter((p) => !seen.has(p.id) && seen.add(p.id));
     const rows = prs.map((pr) => {
@@ -217,18 +222,27 @@ async function renderWip(user, all) {
       const hits = open.filter((b) => b.repo === repo && nums.includes(b.issue));
       return { pr, repo, hits };
     });
-    const claiming = rows.filter((r) => r.hits.length);
-    $("wip-count").textContent = rows.length ? `${rows.length} open PR${rows.length > 1 ? "s" : ""} · ${claiming.length} on funded issues` : "no open PRs";
-    if (!rows.length) {
-      el.innerHTML = `<div class="empty-box"><b>You have no open PRs on funded repos.</b><p><a href="#bounties">Browse funded issues</a> and open a pull request that says “Fixes #N”. It shows up here and gets paid on merge.</p></div>`;
+    $("wip-count").textContent = `${claims.length} claim${claims.length === 1 ? "" : "s"} · ${rows.length} open PR${rows.length === 1 ? "" : "s"}`;
+    if (!rows.length && !claims.length) {
+      el.innerHTML = `<div class="empty-box"><b>You don't hold any claims.</b><p><a href="#bounties">Pick a funded issue</a> and comment <code>/claim</code> on it. Then open a PR that says “Fixes #N”. Only the claimant's PR gets paid, and a claim with no activity for 7 days is released.</p></div>`;
       return;
     }
-    el.innerHTML = rows
+    const claimRows = claims.map(
+      ({ i, repo, b }) => `<div class="row-item claim-row">
+        <div><a href="${i.html_url}" target="_blank" rel="noopener">${esc(i.title)}</a><span class="muted mono">${esc(repo)} · #${i.number} · claimed by you · ${
+          rows.some((r) => r.repo === repo && r.hits.some((h) => h.issue === b.issue)) ? "PR open ✔" : `no PR yet, open one with “Fixes #${i.number}”`
+        }</span></div>
+        <span class="pill paid">🔒 Your claim · ${usd(b.amount)} USDC</span>
+      </div>`
+    );
+    el.innerHTML = claimRows.join("") + rows
       .map(
         ({ pr, repo, hits }) => `<div class="row-item">
           <div><a href="${pr.html_url}" target="_blank" rel="noopener">${esc(pr.title)}</a><span class="muted mono">${esc(repo)} · #${pr.number} · opened ${isoAgo(pr.created_at)}${pr.user.type === "Bot" ? ` by @${esc(pr.user.login)} for you` : ""}</span></div>
           ${hits.length
-            ? `<span class="pill paid">Closes #${hits.map((h) => h.issue).join(", #")} · ${usd(hits.reduce((s, h) => s + h.payout, 0n))} USDC</span>`
+            ? hits.every((h) => claims.some((c) => c.b === h))
+              ? `<span class="pill paid">Closes #${hits.map((h) => h.issue).join(", #")} · ${usd(hits.reduce((s, h) => s + h.payout, 0n))} USDC</span>`
+              : `<span class="pill held" title="Only the claimant's PR is paid. Comment /claim on the issue.">Not claimed · won't be paid</span>`
             : `<span class="pill open" title="Add “Fixes #N” to the PR body to claim a bounty">No bounty linked</span>`}
         </div>`
       )
@@ -433,7 +447,10 @@ async function renderBounties() {
             ${sorted
               .map(
                 (b) => `<div class="sub-row">
-                <a href="${issueUrl(repo, b.issue)}" target="_blank" rel="noopener" data-title="${esc(repo)}#${b.issue}">#${b.issue}</a>
+                <div class="sub-main">
+                  <a href="${issueUrl(repo, b.issue)}" target="_blank" rel="noopener" data-title="${esc(repo)}#${b.issue}">#${b.issue}</a>
+                  ${b.status === "open" ? `<span data-claim="${esc(repo)}#${b.issue}"></span>` : ""}
+                </div>
                 <span class="sub-right"><b>${usd(b.amount)}</b>${statusPill(b)}</span>
               </div>`
               )
@@ -448,6 +465,7 @@ async function renderBounties() {
     })
     .join("");
   fillTitles(root);
+  fillClaims(root);
   fillRepoMeta(root);
   root.querySelectorAll("[data-prs]").forEach(async (n) => {
     const repo = n.dataset.prs;
@@ -476,11 +494,16 @@ function awardYml() {
   return `name: MergePay
 on:
   pull_request_target:
-    types: [closed]
+    types: [opened, closed]
+  issue_comment:
+    types: [created]      # /claim, /unclaim
+  schedule:
+    - cron: "17 3 * * *"  # release claims idle for 7 days
+  workflow_dispatch:
 
 jobs:
-  mergepay:
-    if: github.event.pull_request.merged
+  award:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged
     uses: ${cfg.workflowRepo}/.github/workflows/award.yml@${tag}
     permissions:
       id-token: write       # GitHub signs the merge proof
@@ -490,6 +513,16 @@ jobs:
     with:
       contract: "${cfg.contract}"
       relayer: ${origin}
+
+  claims:
+    if: github.event_name != 'pull_request_target' || github.event.action == 'opened'
+    uses: ${cfg.workflowRepo}/.github/workflows/claims.yml@${tag}
+    permissions:
+      issues: write
+      pull-requests: write
+    with:
+      relayer: ${origin}
+      release_after_days: 7
 `;
 }
 

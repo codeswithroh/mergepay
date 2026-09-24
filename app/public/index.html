@@ -126,8 +126,8 @@
             <div class="titlebar"><i></i><i></i><span>02-merge.app</span></div>
             <div class="win-body">
               <span class="stepno">02</span>
-              <h4>Merge the PR</h4>
-              <p>A contributor opens a PR that says “Fixes #42”. When a maintainer merges it, a pinned GitHub workflow asks GitHub to sign a proof of the merge.</p>
+              <h4>Claim it, merge it</h4>
+              <p>A contributor comments <code>/claim</code>, so nobody else can take their payout, then opens a PR that says “Fixes #42”. When a maintainer merges it, a pinned GitHub workflow asks GitHub to sign a proof.</p>
             </div>
           </article>
           <article class="win step">
@@ -164,10 +164,10 @@
           <div class="titlebar"><i></i><i></i><span>payout-rules.md</span></div>
           <div class="win-body rules">
             <h2>Payout rules</h2>
-            <p class="body">This is what a paid merge looks like. The contract enforces every line.</p>
+            <p class="body">This is what a paid merge looks like. Every line is enforced by the contract, or by the pinned workflow whose GitHub-signed proof the contract checks.</p>
             <ul class="checks">
-              <li><h4>The PR closes the issue</h4><p>Link it in GitHub or write “Fixes #N” in the PR body. One PR can close, and claim, several bounties.</p></li>
-              <li><h4>It actually gets merged</h4><p>Only merged PRs count. A maintainer's merge is the bar, and closed-without-merge pays nothing.</p></li>
+              <li><h4>Claim it first</h4><p>Comment <code>/claim</code> on the funded issue. You're assigned, and only your PR can be paid. One claim at a time per repo, and 7 days with no activity releases it.</p></li>
+              <li><h4>The PR closes it and gets merged</h4><p>Write “Fixes #N” in the PR body. Only merged PRs count: a maintainer's merge is the bar, and closed-without-merge pays nothing.</p></li>
               <li><h4>You wrote it, or your agent did</h4><p>The recipient's GitHub ID is inside the signed token. If a coding agent opened the PR from a bot account, the human it's assigned to gets paid, not the bot.</p></li>
               <li><h4>The workflow is the pinned one</h4><p>Each bounty stores the exact workflow version allowed to award it. Forks and edited copies are rejected.</p></li>
               <li><h4>Link a wallet within 180 days</h4><p>Before or after the merge. Awards wait in the contract under your GitHub ID. If nobody claims one for 180 days, it goes back to the funders.</p></li>
@@ -239,7 +239,7 @@
               <p class="kicker mono">for contributors</p>
               <h3>Get paid for your PRs.</h3>
               <ol class="steps">
-                <li>Pick a funded issue and ship the fix.</li>
+                <li>Comment <code>/claim</code> on a funded issue and ship the fix.</li>
                 <li>Run the one-time link workflow in a repo you own.</li>
                 <li>USDC lands in your wallet when the PR merges. No gas needed.</li>
               </ol>
@@ -270,8 +270,12 @@
             <p class="win-body">After the expiry you chose, every funder can reclaim exactly what they put in, straight from the contract.</p>
           </details>
           <details class="win" open>
+            <summary class="titlebar"><i></i><i></i><span>Can two people race for one bounty?</span></summary>
+            <p class="win-body">No. The first person to comment <code>/claim</code> gets the issue, and only their merged PR is paid. Other PRs get an automatic heads-up that they won't be paid. If the claimant goes quiet for 7 days (no PR, commits or comments), the claim is released for someone else.</p>
+          </details>
+          <details class="win" open>
             <summary class="titlebar"><i></i><i></i><span>My coding agent opens the PRs. Who gets paid?</span></summary>
-            <p class="win-body">You do. If the agent opens the PR under your account, you're the author. If it opens the PR from its own bot account (Copilot, Claude and others can), the payout goes to the human the PR is assigned to. MergePay never takes a wallet address from PR text an agent wrote, so a prompt injection can't redirect the money.</p>
+            <p class="win-body">You do. If the agent opens the PR under your account, you're the author. If it opens the PR from its own bot account (Copilot, Claude and others can), the payout goes to the human the PR is assigned to, as long as that's the person who claimed the issue. MergePay never takes a wallet address from PR text an agent wrote, so a prompt injection can't redirect the money.</p>
           </details>
           <details class="win" open>
             <summary class="titlebar"><i></i><i></i><span>What if the winner never claims?</span></summary>

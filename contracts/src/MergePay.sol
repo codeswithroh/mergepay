@@ -20,8 +20,9 @@ import {RsaSha256} from "./lib/RsaSha256.sol";
 ///   2. link()  — a contributor proves "GitHub user #id controls wallet 0x…" by running a
 ///                workflow_dispatch job in a repo they own. Can happen before or after payout.
 ///   3. award() — when a PR closing the issue is merged, the pinned workflow mints an OIDC token
-///                whose audience names the issue and the recipient (the PR author, or for a PR
-///                opened by a coding-agent bot, the human it was assigned to); anyone can submit it.
+///                whose audience names the issue and the recipient: the contributor who claimed the
+///                issue (its assignee), if they authored the PR or, for a PR opened by a coding-agent
+///                bot, are assigned to it. Anyone can submit the token.
 ///   4. returnUnclaimed() — an award whose recipient never links a wallet within CLAIM_WINDOW
 ///                goes back to the funders, pro rata, instead of sitting in the contract forever.
 contract MergePay {

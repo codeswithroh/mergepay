@@ -520,3 +520,13 @@ footer {
 
 .win-body:has(.ghost-num) .sub { padding-right: 96px; }
 @media (max-width: 600px) { .win-body:has(.ghost-num) .sub { padding-right: 0; } }
+
+/* claims */
+.claim { display: block; margin-top: 3px; font: 700 11.5px var(--mono); }
+.claim code { font: inherit; background: var(--ink); color: var(--paper); padding: 0 4px; }
+.claim.free { color: var(--dim); }
+.sub-main { display: grid; gap: 1px; min-width: 0; }
+.sub-main > a { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-row .repo .claim { font-weight: 700; }
+.empty-box code, .sub code { font: 700 13px var(--mono); background: var(--ink); color: var(--paper); padding: 0 4px; }
+.checks code, .step code, .steps code, .faq code { font: 700 .85em var(--mono); background: var(--ink); color: var(--paper); padding: 0 5px; }

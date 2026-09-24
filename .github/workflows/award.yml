@@ -1,4 +1,7 @@
-# Reusable workflow: when a PR is merged, prove it to MergePay on Arc and pay the author.
+# Reusable workflow: when a PR is merged, prove it to MergePay on Arc and pay the claimant.
+#
+# Who gets paid: the PR author (or, for a bot-authored PR, its human assignee), and only if that
+# person holds the claim on the issue, i.e. is assigned to it (see claims.yml).
 #
 # Pin this file by tag or commit in the bounty (`job_workflow_ref`), so funders know exactly
 # which logic decides who gets paid. It never checks out PR code, so running under
@@ -98,6 +101,18 @@ jobs:
           by=""; [ -n "$VIA" ] && by=" (PR opened by @${VIA} on their behalf)"
           notes=""
           for issue in $ISSUES; do
+            # Claims: a bounty pays only the person holding the issue (its human assignee) at merge time.
+            # Unclaimed or claimed-by-someone-else issues are skipped and stay funded for the rightful claimant.
+            holders=$(gh api "repos/$GITHUB_REPOSITORY/issues/$issue" --jq '[.assignees[] | select(.type == "User")]')
+            if ! jq -e --argjson id "$RECIPIENT_ID" 'map(.id) | index($id) != null' <<<"$holders" >/dev/null; then
+              names=$(jq -r 'map("@" + .login) | join(", ")' <<<"$holders")
+              if [ -z "$names" ]; then
+                notes="${notes}⏸️ #${issue} has a bounty but was never claimed, so it wasn't paid and stays open. If @${RECIPIENT} did the work, a maintainer can assign them to #${issue} and re-run this job."$'\n'
+              else
+                notes="${notes}⏸️ #${issue} is claimed by ${names}, not @${RECIPIENT}, so this merge wasn't paid for it."$'\n'
+              fi
+              continue
+            fi
             aud="mergepay:${contract}:${issue}:${RECIPIENT_ID}"
             token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
               "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$(jq -rn --arg a "$aud" '$a|@uri')" | jq -r .value)
@@ -116,6 +131,6 @@ jobs:
             fi
           done
           if [ -n "$notes" ]; then
-            printf '%s\n%s' "$notes" "<sub>Paid by [MergePay](${RELAYER%/}) · GitHub's OIDC signature verified on-chain on Arc</sub>" \
+            printf '%s\n%s' "$notes" "<sub>[MergePay](${RELAYER%/}) · GitHub's OIDC signature verified on-chain on Arc</sub>" \
               | gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
           fi
