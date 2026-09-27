@@ -21,8 +21,9 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { abi } from "./abi";
+import { authConfigured, currentUser, handleAuth, type AuthEnv } from "./auth";
 
-interface Env {
+interface Env extends AuthEnv {
   ASSETS: Fetcher;
   FEED: KVNamespace;
   CONTRACT: string;
@@ -211,6 +212,16 @@ export default {
 
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
+
+    const auth = await handleAuth(req, env);
+    if (auth) return auth;
+
+    if (url.pathname === "/api/me") {
+      const me = await currentUser(req, env);
+      return new Response(JSON.stringify({ user: me && { id: me.id, login: me.login, avatar: me.avatar }, enabled: authConfigured(env) }), {
+        headers: { "content-type": "application/json", "cache-control": "no-store" },
+      });
+    }
 
     // Bounties for one repository, used by the claim workflows: GET /api/bounties?repo=<repository_id>
     if (url.pathname === "/api/bounties") {

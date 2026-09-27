@@ -4,7 +4,7 @@
   "main": "src/worker.ts",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"], "html_handling": "drop-trailing-slash" },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*", "/auth/*"], "html_handling": "drop-trailing-slash" },
   "observability": { "enabled": true },
   "kv_namespaces": [{ "binding": "FEED", "id": "fe7baa8405ab458d95a0213f119ed2c0" }],
   // Indexes MergePay events into KV every minute (Arc caps eth_getLogs at a few thousand blocks).
@@ -15,8 +15,9 @@
     "RPC_URL": "https://rpc.mainnet.arc.io",
     "RPC_FALLBACK": "https://arc.drpc.org",
     "EXPLORER": "https://explorer.arc.io",
+    "GITHUB_CLIENT_ID": "",
     "WORKFLOW_REPO": "codeswithroh/mergepay",
     "WORKFLOW_REF": "codeswithroh/mergepay/.github/workflows/award.yml@refs/tags/v1"
   }
-  // secret: RELAYER_KEY (wrangler secret put RELAYER_KEY)
+  // secrets: RELAYER_KEY, GITHUB_CLIENT_SECRET, SESSION_SECRET (wrangler secret put <NAME>)
 }

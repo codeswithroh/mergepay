@@ -41,11 +41,12 @@
             <div class="titlebar"><i></i><i></i><span>sign-in.app</span></div>
             <div class="win-body signin">
               <h1 class="h1-sm">Your MergePay account</h1>
-              <p>Enter your GitHub username to see your bounties, payouts and merged work. MergePay only reads public data: your GitHub profile, and the contract on Arc. Nothing to sign.</p>
-              <form id="signin-form" class="form form-inline">
-                <label>GitHub username<input name="login" placeholder="octocat" required autocomplete="username" /></label>
-                <button class="btn" type="submit">View account →</button>
-              </form>
+              <p>Sign in with GitHub to see your claims, payouts and merged work. MergePay only asks GitHub who you are: no repo access, no scopes. It keeps just your username and ID in a signed cookie.</p>
+              <a class="btn btn-gh" id="signin-btn" href="/auth/login?next=%2Fapp%23overview">
+                <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                Sign in with GitHub
+              </a>
+              <p class="sub signin-note">Signing in only controls who sees this dashboard. Your money is protected separately: payouts only go to a wallet that GitHub itself vouches for, checked on-chain.</p>
               <p class="status" id="signin-status" role="status"></p>
             </div>
           </div>

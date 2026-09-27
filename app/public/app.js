@@ -2,7 +2,6 @@ import { createWalletClient, custom, parseUnits, getAddress } from "https://esm.
 import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles, fillClaims } from "/common.js";
 
 const origin = location.origin;
-const LOGIN_KEY = "mp:login";
 let account = null; // connected wallet
 let wallet = null; // viem wallet client
 
@@ -58,39 +57,30 @@ function route() {
 window.addEventListener("hashchange", route);
 
 // =================================================================================================
-// Identity: "view as" a GitHub user (public data only), plus an optional connected wallet
+// Identity: the GitHub account you signed in with (OAuth, verified by the worker), plus an optional
+// connected wallet. The dashboard only ever shows the signed-in user's own account.
 
-const login = () => store.get(LOGIN_KEY);
+let me = null; // { id, login, avatar } from /api/me
+const login = () => me?.login ?? null;
+
+async function loadMe() {
+  store.set("mp:login", null); // drop the old unverified "view as" value
+  try {
+    const r = await fetch("/api/me", { credentials: "same-origin" }).then((x) => x.json());
+    me = r.user;
+    if (!r.enabled) $("signin-btn").outerHTML = `<p class="status err">GitHub sign-in isn't configured on this deployment yet.</p>`;
+  } catch {
+    me = null;
+  }
+}
 
 function setWhoami() {
-  const l = login();
   const b = $("whoami");
-  b.hidden = !l;
-  if (l) b.textContent = `@${l} · switch`;
+  b.hidden = !me;
+  if (me) b.innerHTML = `<img src="${esc(me.avatar)}" alt="" />@${esc(me.login)} · sign out`;
 }
 $("whoami").addEventListener("click", () => {
-  store.set(LOGIN_KEY, null);
-  rendered.clear();
-  setWhoami();
-  location.hash = "#overview";
-  route();
-});
-
-$("signin-form").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const l = new FormData(ev.target).get("login").trim().replace(/^@/, "");
-  const st = $("signin-status");
-  status(st, "Looking you up on GitHub…");
-  try {
-    const u = await gh(`users/${l}`);
-    store.set(LOGIN_KEY, u.login);
-    status(st, "");
-    rendered.clear();
-    setWhoami();
-    route();
-  } catch (e) {
-    status(st, esc(e.message), "err");
-  }
+  location.href = "/auth/logout";
 });
 
 async function connect() {
@@ -126,13 +116,7 @@ async function renderOverview() {
   renderSponsorships();
   if (!l) return;
 
-  let user;
-  try {
-    user = await gh(`users/${l}`);
-  } catch (e) {
-    $("acct-login").textContent = `@${l} (${e.message})`;
-    return;
-  }
+  const user = { id: me.id, login: me.login, avatar_url: me.avatar };
   $("acct-avatar").src = user.avatar_url;
   $("acct-login").textContent = `@${user.login}`;
 
@@ -146,8 +130,8 @@ async function renderOverview() {
   const hasWallet = linked !== ZERO;
 
   $("acct-blurb").innerHTML = hasWallet
-    ? `Viewing public data for GitHub user #${user.id}. Payouts go to <a class="mono" href="${cfg.explorer}/address/${linked}" target="_blank" rel="noopener">${short(linked)}</a>, the wallet GitHub proved you control. Merge a PR that closes a funded issue and the USDC arrives in the same minute.`
-    : `Viewing public data for GitHub user #${user.id}. You haven't linked a payout wallet yet. Awards still count and wait safely in the contract. <a href="#wallet">Link a wallet →</a>`;
+    ? `Signed in as GitHub user #${user.id}. Payouts go to <a class="mono" href="${cfg.explorer}/address/${linked}" target="_blank" rel="noopener">${short(linked)}</a>, the wallet GitHub proved you control. Merge a PR that closes a funded issue and the USDC arrives in the same minute.`
+    : `Signed in as GitHub user #${user.id}. You haven't linked a payout wallet yet. Awards still count and wait safely in the contract. <a href="#wallet">Link a wallet →</a>`;
   $("a-earned").textContent = usd(awardedTotal - pending);
   $("a-pending").textContent = usd(pending);
   $("a-wallet").textContent = hasWallet ? short(linked) : "not linked";
@@ -637,11 +621,11 @@ async function renderWallet() {
   const l = login();
   if (!l) {
     $("w-state").textContent = "not signed in";
-    out.innerHTML = `<div class="empty-box"><b>Who are you on GitHub?</b><p><a href="#overview">Sign in on the Overview tab</a> to see your link status. You can still add the workflow on the right.</p></div>`;
+    out.innerHTML = `<div class="empty-box"><b>Who are you on GitHub?</b><p><a href="/auth/login?next=%2Fapp%23wallet">Sign in with GitHub</a> to see your link status. You can still add the workflow on the right.</p></div>`;
     return;
   }
   try {
-    const u = await gh(`users/${l}`);
+    const u = { id: me.id, login: me.login, avatar_url: me.avatar };
     if (!$("link-repo").value) {
       $("link-repo").value = `${u.login}/${u.login}`;
       renderSnippets();
@@ -671,5 +655,6 @@ if (deployed) {
   $("contract-link").href = `${cfg.explorer}/address/${cfg.contract}`;
 }
 if (cfg.relayer) $("relayer-addr").textContent = ` · relayer ${short(cfg.relayer)}`;
+await loadMe();
 setWhoami();
 route();

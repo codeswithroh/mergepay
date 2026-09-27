@@ -530,3 +530,9 @@ footer {
 .pool-row .repo .claim { font-weight: 700; }
 .empty-box code, .sub code { font: 700 13px var(--mono); background: var(--ink); color: var(--paper); padding: 0 4px; }
 .checks code, .step code, .steps code, .faq code { font: 700 .85em var(--mono); background: var(--ink); color: var(--paper); padding: 0 5px; }
+
+/* GitHub sign-in */
+.btn-gh { background: var(--ink); color: var(--paper); gap: 10px; }
+.btn-gh:hover { background: #222; color: var(--paper); }
+.signin-note { margin-top: 16px; }
+#whoami img { width: 18px; height: 18px; border: 2px solid var(--ink); filter: grayscale(1); }
