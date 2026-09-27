@@ -15,7 +15,7 @@
     "RPC_URL": "https://rpc.mainnet.arc.io",
     "RPC_FALLBACK": "https://arc.drpc.org",
     "EXPLORER": "https://explorer.arc.io",
-    "GITHUB_CLIENT_ID": "",
+    "GITHUB_CLIENT_ID": "Ov23lisiDyuNgmPizE92",
     "WORKFLOW_REPO": "codeswithroh/mergepay",
     "WORKFLOW_REF": "codeswithroh/mergepay/.github/workflows/award.yml@refs/tags/v1"
   }
