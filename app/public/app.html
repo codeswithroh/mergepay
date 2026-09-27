@@ -13,6 +13,7 @@
 </head>
 <body class="app">
   <header class="menubar">
+    <div id="loadbar" aria-hidden="true"></div>
     <a class="logo" href="/" aria-label="MergePay home">
       <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="5" fill="#fff" stroke="#000" stroke-width="3"/><path d="M11 8v16M11 12c0 4 10 2 10 8v4" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
     </a>
@@ -34,6 +35,13 @@
 
       <!-- =================================================================== OVERVIEW -->
       <main id="tab-overview" class="tab" hidden>
+
+        <!-- boot: shown until /api/me answers -->
+        <section id="boot" class="section acct-head" aria-busy="true" aria-label="Loading your account">
+          <div class="acct-id"><span class="skel skel-avatar"></span><div style="flex:1"><span class="skel skel-line skel-title" style="width:min(440px,70%)"></span><span class="skel skel-line " style="width:180px"></span></div></div>
+          <p class="loading-line"><span class="loader"><i></i><i></i><i></i><i></i><i></i></span>Checking who you are with GitHub</p>
+          <dl class="stats stats-4"><div><dd><span class="skel skel-num"></span></dd><dt><span class="skel skel-line sm" style="width:70%"></span></dt></div><div><dd><span class="skel skel-num"></span></dd><dt><span class="skel skel-line sm" style="width:70%"></span></dt></div><div><dd><span class="skel skel-num"></span></dd><dt><span class="skel skel-line sm" style="width:70%"></span></dt></div><div><dd><span class="skel skel-num"></span></dd><dt><span class="skel skel-line sm" style="width:70%"></span></dt></div></dl>
+        </section>
 
         <!-- signed out -->
         <section id="signin" class="section narrow" hidden>
@@ -64,28 +72,28 @@
             </div>
             <p class="body" id="acct-blurb"></p>
             <dl class="stats stats-4">
-              <div><dd id="a-earned">—</dd><dt>USDC earned</dt></div>
-              <div><dd id="a-pending">—</dd><dt>waiting for you</dt></div>
-              <div><dd id="a-merged">—</dd><dt>merged PRs this month</dt></div>
-              <div><dd id="a-wallet">—</dd><dt>payout wallet</dt></div>
+              <div><dd id="a-earned"><span class="skel skel-num"></span></dd><dt>USDC earned</dt></div>
+              <div><dd id="a-pending"><span class="skel skel-num"></span></dd><dt>waiting for you</dt></div>
+              <div><dd id="a-merged"><span class="skel skel-num"></span></dd><dt>merged PRs this month</dt></div>
+              <div><dd id="a-wallet"><span class="skel skel-num"></span></dd><dt>payout wallet</dt></div>
             </dl>
           </section>
 
           <!-- work in progress -->
-          <div class="rule"><span>Your work in progress</span><em id="wip-count">…</em></div>
+          <div class="rule"><span>Your work in progress</span><em id="wip-count"><i class="ell"></i></em></div>
           <section class="section">
             <div class="win">
               <div class="titlebar"><i></i><i></i><span>in-progress.app</span></div>
               <div class="win-body">
                 <h3 class="win-h">Bounties you're working on</h3>
                 <p class="sub">Open pull requests you authored on funded repos. If the PR says “Fixes #N” and N has a bounty, merging it pays you. Using a coding agent that opens PRs from a bot account? Make sure the PR is <b>assigned to you</b>, and you get paid instead of the bot.</p>
-                <div id="wip" class="list"><p class="loading-line">Loading…</p></div>
+                <div id="wip" class="list"><p class="loading-line"><span class="loader"><i></i><i></i><i></i><i></i><i></i></span>Reading Arc and GitHub</p><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
               </div>
             </div>
           </section>
 
           <!-- payouts -->
-          <div class="rule"><span>Payouts</span><em id="pay-state">…</em></div>
+          <div class="rule"><span>Payouts</span><em id="pay-state"><i class="ell"></i></em></div>
           <section class="section">
             <div class="win">
               <div class="titlebar"><i></i><i></i><span>payouts.app</span></div>
@@ -93,13 +101,13 @@
                 <span class="ghost-num" id="pay-num">00</span>
                 <h3 class="win-h">Payout pipeline</h3>
                 <p class="sub">Each bounty goes Merged → Awarded on Arc → Paid to your wallet. Awards wait in the contract for up to 180 days until you link a wallet. After that, funders can take them back.</p>
-                <div id="payouts" class="list"></div>
+                <div id="payouts" class="list"><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
               </div>
             </div>
           </section>
 
           <!-- activity -->
-          <div class="rule"><span id="act-label">Activity</span><em id="act-count">…</em></div>
+          <div class="rule"><span id="act-label">Activity</span><em id="act-count"><i class="ell"></i></em></div>
           <section class="section">
             <div class="win">
               <div class="titlebar"><i></i><i></i><span>activity.app</span></div>
@@ -109,7 +117,7 @@
                 <div class="activity">
                   <div class="act-left">
                     <div class="bigcount">
-                      <b id="act-days">0</b>
+                      <b id="act-days"><span class="skel skel-num"></span></b>
                       <span>active days this month</span>
                       <div class="segs" id="act-segs"></div>
                     </div>
@@ -121,19 +129,19 @@
                   </div>
                   <div class="act-right">
                     <p class="month" id="act-month"></p>
-                    <div class="spark" id="act-spark"></div>
+                    <div class="spark skel-spark" id="act-spark"></div>
                     <div class="cal-head"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
-                    <div class="cal" id="act-cal"></div>
+                    <div class="cal" id="act-cal"><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span><span class="skel"></span></div>
                   </div>
                 </div>
 
                 <div class="panel-list">
                   <div class="plist-head"><span id="prs-head">Merged pull requests (0)</span></div>
-                  <div id="prs" class="plist"></div>
+                  <div id="prs" class="plist"><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
                 </div>
                 <div class="panel-list">
                   <div class="plist-head alt"><span id="paid-head">Payouts on Arc (0)</span></div>
-                  <div id="paid-list" class="plist"></div>
+                  <div id="paid-list" class="plist"><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
                 </div>
               </div>
             </div>
@@ -141,12 +149,12 @@
         </div>
 
         <!-- funded repos: shown signed in or out -->
-        <div class="rule"><span>Funded repos</span><em id="repos-count">…</em></div>
+        <div class="rule"><span>Funded repos</span><em id="repos-count"><i class="ell"></i></em></div>
         <section class="section">
           <p class="body">Merged work that closes a funded issue on these repos gets paid. <a href="#bounties">Browse their funded issues and open pull requests</a> to pick something up.</p>
           <div class="win">
             <div class="titlebar"><i></i><i></i><span>repos.db</span></div>
-            <div id="repos" class="pool"><p class="pool-empty">Loading from Arc…</p></div>
+            <div id="repos" class="pool"><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div></div>
           </div>
         </section>
 
@@ -171,8 +179,8 @@
           <h1 class="h1-sm">Funded repos</h1>
           <p class="body">Each of these repos has USDC waiting on some of its issues. Pick a funded issue, or check what's already in flight in the open pull requests. The merge is the bar, and the contract pays the author.</p>
         </section>
-        <div class="rule"><span id="b-repos">0 repos</span><em id="b-totals">…</em></div>
-        <section class="section" id="repo-cards"><p class="pool-empty win">Loading from Arc…</p></section>
+        <div class="rule"><span id="b-repos">0 repos</span><em id="b-totals"><i class="ell"></i></em></div>
+        <section class="section" id="repo-cards"><article class="win skel-card"><div class="titlebar"><i></i><i></i><span><span class="skel skel-line sm" style="width:100%"></span></span></div><div class="repo-head"><span class="skel skel-line " style="width:30%"></span><span class="skel skel-line sm" style="width:70%"></span></div><div class="win-body"><span class="skel skel-block"></span><span class="skel skel-line " style="width:55%"></span><span class="skel skel-line sm" style="width:35%"></span></div></article><article class="win skel-card"><div class="titlebar"><i></i><i></i><span><span class="skel skel-line sm" style="width:100%"></span></span></div><div class="repo-head"><span class="skel skel-line " style="width:30%"></span><span class="skel skel-line sm" style="width:70%"></span></div><div class="win-body"><span class="skel skel-block"></span><span class="skel skel-line " style="width:55%"></span><span class="skel skel-line sm" style="width:35%"></span></div></article></section>
       </main>
 
       <!-- =================================================================== FUND -->
@@ -252,13 +260,13 @@
           <h1 class="h1-sm">Payout wallet</h1>
           <p class="body">Link your GitHub account to an Arc wallet once. GitHub itself proves it's you: you run one workflow in a repo you own, and the contract records the wallet. Linking can happen before or after a merge. You never need USDC for gas.</p>
         </section>
-        <div class="rule"><span>Status</span><em id="w-state">…</em></div>
+        <div class="rule"><span>Status</span><em id="w-state"><i class="ell"></i></em></div>
         <section class="section">
           <div class="pair">
             <div class="win">
               <div class="titlebar"><i></i><i></i><span>whoami.app</span></div>
               <div class="win-body">
-                <div id="lookup" class="lookup"><p class="loading-line">Sign in on the Overview tab to see your status.</p></div>
+                <div id="lookup" class="lookup"><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
               </div>
             </div>
             <div class="win">

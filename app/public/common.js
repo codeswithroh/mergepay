@@ -7,6 +7,38 @@ export const CLAIM_WINDOW = 180n * 86400n;
 export const ZERO = "0x0000000000000000000000000000000000000000";
 export const $ = (id) => document.getElementById(id);
 
+// ---- Global progress bar: every network request counts. It only appears if something takes
+// longer than 150ms, so quick background refreshes don't flicker it.
+let inflight = 0, barTimer = null;
+function syncBar() {
+  const el = document.getElementById("loadbar");
+  if (!el) return;
+  if (inflight > 0 && !barTimer && !el.classList.contains("on")) barTimer = setTimeout(() => (barTimer = null, inflight > 0 && el.classList.add("on")), 150);
+  if (inflight === 0) {
+    clearTimeout(barTimer);
+    barTimer = null;
+    el.classList.remove("on");
+  }
+}
+const rawFetch = window.fetch.bind(window);
+window.fetch = (...args) => {
+  inflight++;
+  syncBar();
+  return rawFetch(...args).finally(() => {
+    inflight--;
+    syncBar();
+  });
+};
+
+// ---- Skeleton snippets for states rendered from JS (the static ones are in the HTML).
+const line = (w, c = "") => `<span class="skel skel-line ${c}" style="width:${w}"></span>`;
+export const skel = {
+  line,
+  loader: (text) => `<p class="loading-line"><span class="loader"><i></i><i></i><i></i><i></i><i></i></span>${text}</p>`,
+  row: () => `<div class="skel-row"><div>${line("62%")}${line("38%", "sm")}</div><span class="skel skel-pill"></span></div>`,
+  rows: (n) => Array.from({ length: n }, () => skel.row()).join(""),
+};
+
 export const cfg = await fetch("/api/config").then((r) => r.json());
 export const chain = defineChain({
   id: cfg.chainId,

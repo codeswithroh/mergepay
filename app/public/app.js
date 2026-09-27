@@ -1,5 +1,5 @@
 import { createWalletClient, custom, parseUnits, getAddress } from "https://esm.sh/viem@2.56.8";
-import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles, fillClaims } from "/common.js";
+import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles, fillClaims, skel } from "/common.js";
 
 const origin = location.origin;
 let account = null; // connected wallet
@@ -116,6 +116,7 @@ $("connect").addEventListener("click", () => connect().catch((e) => toast(e.shor
 
 async function renderOverview() {
   const l = login();
+  $("boot").hidden = true;
   $("signin").hidden = Boolean(l);
   $("account").hidden = !l;
   renderRepos();
@@ -142,7 +143,7 @@ async function renderOverview() {
         $("acct-blurb").innerHTML = `<span class="status err">${msg} <button class="linkish" onclick="location.reload()">Reload</button></span>`;
         return;
       }
-      $("acct-blurb").innerHTML = `<span class="muted">${msg} Retrying…</span>`;
+      $("acct-blurb").innerHTML = skel.loader(`${msg} Retrying…`);
       await new Promise((r) => setTimeout(r, 1500 * attempt));
     }
   }
@@ -299,6 +300,7 @@ async function renderActivity(user, mine) {
   for (let d = 1; d <= days; d++) if (perDay[d]) weekActive[Math.floor((firstDow + d - 1) / 7)] = true;
   $("act-segs").innerHTML = weekActive.map((on) => `<i class="${on ? "on" : ""}"></i>`).join("");
 
+  $("act-spark").classList.remove("skel-spark");
   const max = Math.max(1, ...perDay);
   $("act-spark").innerHTML = perDay
     .slice(1)
@@ -385,6 +387,7 @@ function fillRepoMeta(root) {
 async function renderSponsorships() {
   const el = $("spon");
   if (!account) return;
+  el.innerHTML = skel.loader(`Reading what ${short(account)} funded`) + skel.rows(2);
   if (!deployed) {
     el.innerHTML = `<p class="loading-line">Contract deploying soon.</p>`;
     return;
@@ -477,7 +480,7 @@ async function renderBounties() {
           </div>
           <div class="sub-win alt">
             <div class="sub-head"><span data-prs-head="${esc(repo)}">Open pull requests</span><a href="https://github.com/${esc(repo)}/pulls" target="_blank" rel="noopener">All ↗</a></div>
-            <div data-prs="${esc(repo)}"><div class="sub-row muted">Loading…</div></div>
+            <div data-prs="${esc(repo)}"><div class="sub-row">${skel.line("70%")}</div><div class="sub-row">${skel.line("55%")}</div></div>
           </div>
         </div>
       </article>`;
@@ -660,7 +663,8 @@ async function checkWorkflow() {
     setStep(2, "after step 1");
     return;
   }
-  box.innerHTML = `<p class="loading-line">Checking ${esc(fundRepo.full_name)} for the MergePay workflow…</p>`;
+  box.innerHTML = skel.loader(`Checking ${esc(fundRepo.full_name)} for the MergePay workflow`);
+  setStep(2, "checking…");
   const needle = `${cfg.workflowRepo}/.github/workflows/award.yml@`;
   let found = null;
   try {
@@ -750,7 +754,7 @@ $("fund-form").addEventListener("submit", async (ev) => {
     const value = parseUnits(String(f.get("amount")), 18);
     const fee = parseUnits(String(f.get("fee")), 18);
     const expiry = BigInt(Math.floor(Date.now() / 1000) + Number(f.get("days")) * 86400);
-    status(st, "Confirm in your wallet…");
+    status(st, skel.loader("Confirm in your wallet"));
     const hash = await w.writeContract({
       account,
       address: cfg.contract,
@@ -759,7 +763,7 @@ $("fund-form").addEventListener("submit", async (ev) => {
       args: [BigInt(fundRepo.id), issue, fundRepo.full_name, cfg.workflowRef, expiry, fee],
       value,
     });
-    status(st, `Submitted ${txLink(hash)}…`);
+    status(st, skel.loader(`Submitted ${txLink(hash)}, waiting for Arc to finalize`));
     const r = await pub.waitForTransactionReceipt({ hash, pollingInterval: 250 });
     if (r.status !== "success") throw new Error("transaction reverted");
     status(
@@ -785,6 +789,7 @@ $("fund-form").addEventListener("submit", async (ev) => {
 async function renderWallet() {
   renderSnippets();
   const out = $("lookup");
+  out.innerHTML = skel.loader("Reading your link status on Arc") + skel.rows(2);
   const l = login();
   if (!l) {
     $("w-state").textContent = "not signed in";

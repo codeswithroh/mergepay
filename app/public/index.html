@@ -15,6 +15,7 @@
 </head>
 <body>
   <header class="menubar">
+    <div id="loadbar" aria-hidden="true"></div>
     <a class="logo" href="/" aria-label="MergePay home">
       <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="5" fill="#fff" stroke="#000" stroke-width="3"/><path d="M11 8v16M11 12c0 4 10 2 10 8v4" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
     </a>
@@ -99,14 +100,14 @@
           <h2>Every payout is<br />on the chain.</h2>
           <p class="body">Funding, awards and payouts are all contract events on Arc. This feed is read straight from the chain, not from a database we could edit.</p>
           <dl class="stats" id="stats">
-            <div><dt>Escrowed</dt><dd id="s-open">—</dd></div>
-            <div><dt>Paid out</dt><dd id="s-paid">—</dd></div>
-            <div><dt>Bounties</dt><dd id="s-count">—</dd></div>
+            <div><dt>Escrowed</dt><dd id="s-open"><span class="skel skel-num"></span></dd></div>
+            <div><dt>Paid out</dt><dd id="s-paid"><span class="skel skel-num"></span></dd></div>
+            <div><dt>Bounties</dt><dd id="s-count"><span class="skel skel-num"></span></dd></div>
           </dl>
         </div>
         <div class="win feed-win">
           <div class="titlebar"><i></i><i></i><span>activity.feed</span></div>
-          <ul class="feed" id="feed"><li class="feed-empty">Reading Arc…</li></ul>
+          <ul class="feed" id="feed"><li class="skel-feed"><span class="skel"></span><div><span class="skel skel-line " style="width:75%"></span><span class="skel skel-line sm" style="width:40%"></span></div><span class="skel skel-line sm" style="width:100%"></span></li><li class="skel-feed"><span class="skel"></span><div><span class="skel skel-line " style="width:75%"></span><span class="skel skel-line sm" style="width:40%"></span></div><span class="skel skel-line sm" style="width:100%"></span></li><li class="skel-feed"><span class="skel"></span><div><span class="skel skel-line " style="width:75%"></span><span class="skel skel-line sm" style="width:40%"></span></div><span class="skel skel-line sm" style="width:100%"></span></li><li class="skel-feed"><span class="skel"></span><div><span class="skel skel-line " style="width:75%"></span><span class="skel skel-line sm" style="width:40%"></span></div><span class="skel skel-line sm" style="width:100%"></span></li><li class="skel-feed"><span class="skel"></span><div><span class="skel skel-line " style="width:75%"></span><span class="skel skel-line sm" style="width:40%"></span></div><span class="skel skel-line sm" style="width:100%"></span></li></ul>
         </div>
       </section>
 
@@ -184,7 +185,7 @@
         <p class="body">Each of these has USDC waiting in the contract. Ship the fix and it's yours.</p>
         <div class="win">
           <div class="titlebar"><i></i><i></i><span>bounties.db</span></div>
-          <div class="pool" id="pool"><p class="pool-empty">Loading from Arc…</p></div>
+          <div class="pool" id="pool"><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div><div class="skel-pool"><span class="skel skel-line " style="width:80%"></span><span class="skel skel-line " style="width:90%"></span><span class="skel skel-line " style="width:100%"></span></div></div>
         </div>
         <div class="cta after"><a class="btn" href="/app#bounties">See all bounties →</a></div>
       </section>
