@@ -179,41 +179,68 @@
       <main id="tab-fund" class="tab" hidden>
         <section class="section">
           <h1 class="h1-sm">Fund an issue</h1>
-          <p class="body">Escrow USDC on any public GitHub issue. It's released only by a GitHub-signed proof that a PR closing the issue was merged, or refunded to you after the deadline.</p>
+          <p class="body">Three steps, in this order. Your USDC is escrowed on Arc and only released by a GitHub-signed proof that the claimant's PR closing the issue was merged. If nothing merges by the deadline, it comes back to you.</p>
         </section>
-        <div class="rule"><span>Escrow</span><em>arc mainnet · chain 5042</em></div>
+
+        <!-- STEP 1 -->
+        <div class="rule"><span>Step 1 · Pick the issue</span><em id="s1-state">to do</em></div>
         <section class="section">
-          <div class="pair">
-            <div class="win">
-              <div class="titlebar"><i></i><i></i><span>escrow.app</span></div>
-              <div class="win-body">
-                <form id="fund-form" class="form">
-                  <label>Repository<input name="repo" placeholder="owner/name" required autocomplete="off" /></label>
-                  <div class="row">
-                    <label>Issue #<input name="issue" type="number" min="1" required /></label>
-                    <label>Amount (USDC)<input name="amount" type="number" min="0.1" step="0.01" value="25" required /></label>
-                  </div>
-                  <div class="row">
-                    <label>Refundable after (days)<input name="days" type="number" min="1" value="30" required /></label>
-                    <label>Relayer fee (USDC)<input name="fee" type="number" min="0" max="1" step="0.01" value="0.03" required /></label>
-                  </div>
-                  <p class="hint" id="repo-hint"></p>
-                  <button class="btn" type="submit">Escrow USDC on Arc</button>
-                  <p class="status" id="fund-status" role="status"></p>
-                </form>
+          <div class="win step-win" id="step1">
+            <div class="titlebar"><i></i><i></i><span>1-issue.app</span></div>
+            <div class="win-body">
+              <div class="row row-issue">
+                <label>Repository<input id="f-repo" placeholder="owner/name or a GitHub URL" autocomplete="off" /></label>
+                <label>Issue #<input id="f-issue" type="number" min="1" /></label>
               </div>
+              <p class="hint" id="repo-hint">Paste an issue URL like github.com/owner/repo/issues/12 and both fields fill in.</p>
             </div>
-            <div class="win">
-              <div class="titlebar"><i></i><i></i><span>.github/workflows/mergepay.yml</span></div>
-              <div class="win-body">
-                <p>Then add one workflow to the repo. It runs when a PR is merged, never checks out PR code, and the bounty only accepts proofs from this pinned version:</p>
-                <p class="pin mono" id="wf-ref"></p>
-                <pre class="code"><code id="award-yml"></code></pre>
-                <div class="cta">
+          </div>
+        </section>
+
+        <!-- STEP 2 -->
+        <div class="rule"><span>Step 2 · Install the workflow</span><em id="s2-state">after step 1</em></div>
+        <section class="section">
+          <div class="win step-win" id="step2">
+            <div class="titlebar"><i></i><i></i><span>.github/workflows/mergepay.yml</span></div>
+            <div class="win-body">
+              <p class="sub">Once per repo. This is what notices the merge and asks GitHub to sign the proof, so without it a merge can't pay. It never checks out PR code.</p>
+              <div id="wf-status" class="wf-status"></div>
+              <div class="choices">
+                <div class="choice">
+                  <p class="kicker mono">Easiest · use your coding agent</p>
+                  <p>Copy a ready-made prompt, paste it into Claude Code, Codex or Cursor, and it adds the file for you.</p>
+                  <button class="btn btn-gh" data-copy-agent="award">Copy for agent</button>
+                  <details class="peek"><summary>Show prompt</summary><pre class="code"><code id="award-prompt"></code></pre></details>
+                </div>
+                <div class="choice">
+                  <p class="kicker mono">Or · on github.com</p>
+                  <p>Opens GitHub's "new file" page with the workflow already filled in. Just press <b>Commit</b>.</p>
                   <a class="btn" id="add-award" target="_blank" rel="noopener">Add to repo ↗</a>
-                  <button class="btn btn-flat" data-copy="award-yml">Copy</button>
+                  <details class="peek"><summary>Show the YAML</summary><pre class="code"><code id="award-yml"></code></pre><button class="btn btn-sm btn-flat" data-copy="award-yml">Copy YAML</button></details>
                 </div>
               </div>
+              <p class="pin mono" title="The bounty only accepts proofs from this exact workflow version">pinned: <span id="wf-ref"></span></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 3 -->
+        <div class="rule"><span>Step 3 · Escrow USDC</span><em id="s3-state">arc mainnet · chain 5042</em></div>
+        <section class="section">
+          <div class="win step-win" id="step3">
+            <div class="titlebar"><i></i><i></i><span>3-escrow.app</span></div>
+            <div class="win-body">
+              <form id="fund-form" class="form">
+                <div class="row row-3">
+                  <label>Amount (USDC)<input name="amount" type="number" min="0.1" step="0.01" value="25" required /></label>
+                  <label>Refundable after (days)<input name="days" type="number" min="1" value="30" required /></label>
+                  <label>Relayer fee (USDC)<input name="fee" type="number" min="0" max="1" step="0.01" value="0.03" required /></label>
+                </div>
+                <p class="hint">The relayer fee pays the gas to submit the merge proof (about $0.02 on Arc), so contributors never need USDC for gas.</p>
+                <p class="status" id="wf-warn" hidden></p>
+                <button class="btn" type="submit" id="fund-btn">Escrow USDC on Arc</button>
+                <p class="status" id="fund-status" role="status"></p>
+              </form>
             </div>
           </div>
         </section>
@@ -245,9 +272,11 @@
                 <label>Your repo<input id="link-repo" placeholder="you/you" autocomplete="off" /></label>
                 <pre class="code"><code id="link-yml"></code></pre>
                 <div class="cta">
+                  <button class="btn btn-gh" data-copy-agent="link">Copy for agent</button>
                   <a class="btn" id="add-link" target="_blank" rel="noopener">Add to my repo ↗</a>
-                  <button class="btn btn-flat" data-copy="link-yml">Copy</button>
+                  <button class="btn btn-flat" data-copy="link-yml">Copy YAML</button>
                 </div>
+                <p class="sub agent-note">“Copy for agent” gives Claude Code or Codex a prompt that adds the file, runs it and reports back. Connect your wallet first so the address is filled in.</p>
               </div>
             </div>
           </div>

@@ -536,3 +536,24 @@ footer {
 .btn-gh:hover { background: #222; color: var(--paper); }
 .signin-note { margin-top: 16px; }
 #whoami img { width: 18px; height: 18px; border: 2px solid var(--ink); filter: grayscale(1); }
+
+/* fund stepper */
+.rule em.done { background: var(--paper); color: var(--ink); border: 2.5px solid var(--ink); }
+.step-win.step-done .titlebar { background: var(--ink); color: var(--paper); }
+.step-win.step-done .titlebar i { border-color: var(--paper); background: var(--ink); }
+.row-issue { grid-template-columns: 1fr 160px; }
+.row-3 { grid-template-columns: repeat(3, 1fr); }
+.choices { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin: 14px 0; }
+.choice { padding: 16px; border: 2.5px solid var(--ink); background: var(--paper); display: grid; gap: 10px; align-content: start; justify-items: start; }
+.choice:first-child { background: repeating-linear-gradient(135deg, var(--paper) 0 10px, #f3f3f3 10px 20px); }
+.choice p { margin: 0; }
+.choice .kicker { margin: 0; }
+.peek { width: 100%; }
+.peek summary { cursor: pointer; font: 700 12.5px var(--mono); text-decoration: underline; text-underline-offset: 3px; }
+.peek .code { max-height: 260px; white-space: pre-wrap; word-break: break-word; }
+.wf-status .status { margin: 0; }
+.linkish { font: inherit; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-weight: 700; }
+.agent-note { margin-top: 12px; font-size: 14px; }
+.status code { font: 700 12px var(--mono); background: var(--ink); color: var(--paper); padding: 0 4px; }
+@media (max-width: 900px) { .choices { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .row-issue, .row-3 { grid-template-columns: 1fr; } }

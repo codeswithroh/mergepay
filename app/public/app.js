@@ -532,9 +532,54 @@ jobs:
 `;
 }
 
+const fence = "```";
+
+/** Prompt a coding agent (Claude Code, Codex, Cursor…) can follow to install the award workflow. */
+function awardPrompt() {
+  const repo = fundRepo?.full_name ?? "<owner/repo>";
+  const branch = fundRepo?.default_branch ?? "the default branch";
+  return `Set up MergePay on the GitHub repository ${repo}. MergePay pays USDC bounties on Arc when a pull request that closes a funded issue is merged. It needs one workflow file in the repo.
+
+Do exactly this:
+1. In ${repo}, create the file .github/workflows/mergepay.yml with exactly this content. Don't change anything in it:
+
+${fence}yaml
+${awardYml().trimEnd()}
+${fence}
+
+2. Commit it to ${branch} with the message "Add MergePay workflow". If you can't push to ${branch}, open a pull request with that file instead.
+3. Don't modify any other file.
+4. Verify it landed, e.g. \`gh api repos/${repo}/contents/.github/workflows/mergepay.yml --jq .path\`.
+5. Reply with the commit or PR link.
+
+Context, in case you're asked: it runs on pull_request_target but never checks out PR code; \`id-token: write\` lets GitHub sign the merge proof that the MergePay contract verifies on-chain. Contributors take a bounty by commenting /claim on the issue.`;
+}
+
+/** Prompt a coding agent can follow to link the user's GitHub account to their payout wallet. */
+function linkPrompt() {
+  const repo = $("link-repo").value.trim() || (me ? `${me.login}/${me.login}` : "<a repo you own>");
+  const w = account ?? "<YOUR_ARC_WALLET_ADDRESS>";
+  return `Link my GitHub account to my MergePay payout wallet on Arc. GitHub proves it's me by signing a token inside a workflow run in a repository I own.
+
+Do exactly this:
+1. In ${repo} (a repository I own, not an org's), create .github/workflows/mergepay-link.yml with exactly this content:
+
+${fence}yaml
+${linkYml(account).trimEnd()}
+${fence}
+
+2. Commit it to the default branch with the message "Add MergePay wallet link". If ${repo} doesn't exist, create it as a public repo first.
+3. Run it: \`gh workflow run mergepay-link.yml --repo ${repo} -f wallet=${w}\`
+4. Wait for it: \`gh run watch --repo ${repo} $(gh run list --repo ${repo} --workflow mergepay-link.yml --limit 1 --json databaseId --jq '.[0].databaseId')\`
+5. Success means the run log shows "ok":true and a txHash. Reply with the tx hash, or the error from the log if it failed.
+
+Don't modify any other files.`;
+}
+
 function renderSnippets() {
   const a = awardYml();
   $("award-yml").textContent = a;
+  $("award-prompt").textContent = awardPrompt();
   $("wf-ref").textContent = cfg.workflowRef;
   $("add-award").href = fundRepo
     ? newFileUrl(fundRepo.full_name, fundRepo.default_branch, ".github/workflows/mergepay.yml", a)
@@ -546,46 +591,127 @@ function renderSnippets() {
   $("add-link").href = /^[\w.-]+\/[\w.-]+$/.test(repo) ? newFileUrl(repo, "main", ".github/workflows/mergepay-link.yml", l) : "https://github.com/new";
 }
 
-function renderFund() {
-  renderSnippets();
-}
-
 document.querySelectorAll("[data-copy]").forEach((b) =>
   b.addEventListener("click", async () => {
     await navigator.clipboard.writeText($(b.dataset.copy).textContent);
     toast("Copied");
   })
 );
+document.querySelectorAll("[data-copy-agent]").forEach((b) =>
+  b.addEventListener("click", async () => {
+    if (b.dataset.copyAgent === "award" && !fundRepo) return toast("Pick the repository in step 1 first");
+    await navigator.clipboard.writeText(b.dataset.copyAgent === "award" ? awardPrompt() : linkPrompt());
+    toast("Prompt copied. Paste it into Claude Code or Codex");
+  })
+);
 $("link-repo").addEventListener("input", renderSnippets);
 
-const repoInput = document.querySelector('#fund-form [name="repo"]');
-repoInput.addEventListener("change", async () => {
-  const v = repoInput.value.trim().replace(/^https:\/\/github.com\//, "").replace(/\/$/, "");
-  repoInput.value = v;
+// ---- Fund: step 1 (issue) → step 2 (workflow installed?) → step 3 (escrow) -------------------------
+
+let workflowInstalled = null; // null = unknown, true/false once checked
+
+function setStep(n, text, done) {
+  $(`s${n}-state`).textContent = text;
+  $(`s${n}-state`).classList.toggle("done", Boolean(done));
+  $(`step${n}`).classList.toggle("step-done", Boolean(done));
+}
+
+/** Does any workflow in the repo call our pinned award.yml? Reads raw files (no API rate limit). */
+async function checkWorkflow() {
+  const box = $("wf-status");
+  workflowInstalled = null;
+  if (!fundRepo) {
+    box.innerHTML = "";
+    setStep(2, "after step 1");
+    return;
+  }
+  box.innerHTML = `<p class="loading-line">Checking ${esc(fundRepo.full_name)} for the MergePay workflow…</p>`;
+  const needle = `${cfg.workflowRepo}/.github/workflows/award.yml@`;
+  let found = null;
+  try {
+    const files = await fetch(`https://api.github.com/repos/${fundRepo.full_name}/contents/.github/workflows?ref=${fundRepo.default_branch}`).then((r) => (r.ok ? r.json() : []));
+    for (const f of files.filter((f) => /\.ya?ml$/.test(f.name))) {
+      const text = await fetch(f.download_url).then((r) => r.text());
+      const m = text.match(new RegExp(`${needle.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}([\\w.\\-/]+)`));
+      if (m) {
+        found = { file: f.path, tag: m[1], claims: text.includes("claims.yml") };
+        break;
+      }
+    }
+  } catch {}
+  workflowInstalled = Boolean(found && found.tag === tag);
+  if (found && found.tag === tag) {
+    box.innerHTML = `<p class="status ok">Already installed in <span class="mono">${esc(found.file)}</span>. Nothing to do here.${found.claims ? "" : " (Claims aren't enabled in it yet. Re-add the workflow to get /claim.)"}</p>`;
+    setStep(2, "installed ✔", true);
+  } else if (found) {
+    box.innerHTML = `<p class="status err">Found MergePay pinned to <span class="mono">@${esc(found.tag)}</span>, but new bounties pin <span class="mono">@${esc(tag)}</span>. Update the file below.</p>`;
+    setStep(2, "needs update");
+  } else {
+    box.innerHTML = `<p class="status err">Not installed on <span class="mono">${esc(fundRepo.full_name)}</span> yet. Pick one of the two ways below, then <button class="linkish" id="wf-recheck">check again</button>.</p>`;
+    $("wf-recheck").addEventListener("click", checkWorkflow);
+    setStep(2, "to do");
+  }
+  $("wf-warn").hidden = workflowInstalled !== false;
+  $("wf-warn").className = "status err";
+  $("wf-warn").textContent = "The workflow isn't installed yet (step 2). You can escrow now, but a merge can't pay out until it is.";
+}
+
+function updateFundButton() {
+  const repo = fundRepo?.full_name, issue = $("f-issue").value;
+  const amt = document.querySelector('#fund-form [name="amount"]').value;
+  $("fund-btn").textContent = repo && issue ? `Escrow ${amt || "…"} USDC on ${repo}#${issue}` : "Escrow USDC on Arc";
+  setStep(1, repo && issue ? `${repo}#${issue} ✔` : "to do", Boolean(repo && issue));
+}
+
+async function onIssueInput() {
+  // Accept a pasted issue URL: https://github.com/owner/repo/issues/12
+  const raw = $("f-repo").value.trim();
+  const m = raw.match(/github\.com\/([\w.-]+\/[\w.-]+)(?:\/issues\/(\d+))?/);
+  const v = (m ? m[1] : raw).replace(/\/$/, "");
+  if (m) $("f-repo").value = v;
+  if (m?.[2]) $("f-issue").value = m[2];
+  if (fundRepo?.full_name?.toLowerCase() === v.toLowerCase()) return updateFundButton();
   fundRepo = null;
   $("repo-hint").textContent = "";
-  if (!/^[\w.-]+\/[\w.-]+$/.test(v)) return;
-  try {
-    fundRepo = await gh(`repos/${v}`);
-    $("repo-hint").textContent = `✓ ${fundRepo.full_name} · repository_id ${fundRepo.id}`;
-  } catch (e) {
-    $("repo-hint").textContent = `✗ ${e.message}`;
+  if (/^[\w.-]+\/[\w.-]+$/.test(v)) {
+    try {
+      fundRepo = await gh(`repos/${v}`);
+      $("repo-hint").textContent = `✓ ${fundRepo.full_name} · repository_id ${fundRepo.id}`;
+    } catch (e) {
+      $("repo-hint").textContent = `✗ ${e.message}`;
+    }
   }
+  updateFundButton();
   renderSnippets();
-});
+  checkWorkflow();
+}
+
+function renderFund() {
+  renderSnippets();
+  updateFundButton();
+}
+
+$("f-repo").addEventListener("change", onIssueInput);
+$("f-repo").addEventListener("paste", () => setTimeout(onIssueInput, 0));
+$("f-issue").addEventListener("input", updateFundButton);
+document.querySelector('#fund-form [name="amount"]').addEventListener("input", updateFundButton);
 
 $("fund-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = new FormData(ev.target);
   const st = $("fund-status");
-  const btn = ev.target.querySelector("button");
+  const btn = $("fund-btn");
   if (!deployed) return status(st, "Contract not deployed yet.", "err");
+  if (!fundRepo || !$("f-issue").value) {
+    status(st, "Pick the repository and issue in step 1 first.", "err");
+    $("f-repo").focus();
+    return;
+  }
   btn.disabled = true;
   try {
-    if (!fundRepo) fundRepo = await gh(`repos/${String(f.get("repo")).trim()}`);
     const w = wallet ?? (await connect());
     if (!w) return;
-    const issue = BigInt(f.get("issue"));
+    const issue = BigInt($("f-issue").value);
     const value = parseUnits(String(f.get("amount")), 18);
     const fee = parseUnits(String(f.get("fee")), 18);
     const expiry = BigInt(Math.floor(Date.now() / 1000) + Number(f.get("days")) * 86400);
@@ -601,7 +727,12 @@ $("fund-form").addEventListener("submit", async (ev) => {
     status(st, `Submitted ${txLink(hash)}…`);
     const r = await pub.waitForTransactionReceipt({ hash, pollingInterval: 250 });
     if (r.status !== "success") throw new Error("transaction reverted");
-    status(st, `${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}`, "ok");
+    status(
+      st,
+      `${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}. Tell contributors to comment <code>/claim</code> on the issue.`,
+      "ok"
+    );
+    setStep(3, "funded ✔", true);
     await bounties(true);
     rendered.delete("overview");
     rendered.delete("bounties");
@@ -609,6 +740,7 @@ $("fund-form").addEventListener("submit", async (ev) => {
     status(st, esc(e.shortMessage || e.message), "err");
   } finally {
     btn.disabled = false;
+    updateFundButton();
   }
 });
 
