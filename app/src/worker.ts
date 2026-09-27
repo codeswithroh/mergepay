@@ -263,6 +263,7 @@ export default {
         deployBlock: env.DEPLOY_BLOCK,
         chainId: 5042,
         rpc: env.RPC_URL,
+        rpcFallback: env.RPC_FALLBACK ?? null,
         explorer: env.EXPLORER,
         workflowRepo: env.WORKFLOW_REPO,
         workflowRef: env.WORKFLOW_REF,

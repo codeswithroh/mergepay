@@ -20,7 +20,13 @@ const read = (functionName, args) => pub.readContract({ address: cfg.contract, a
 
 // Cached per page load; refreshed after writes.
 let bountiesP = null;
-const bounties = (fresh = false) => (fresh || !bountiesP ? (bountiesP = loadBounties(200n).catch(() => [])) : bountiesP);
+const bounties = (fresh = false) => {
+  if (fresh || !bountiesP) {
+    bountiesP = loadBounties(200n);
+    bountiesP.catch(() => (bountiesP = null)); // don't cache a failure
+  }
+  return bountiesP;
+};
 let feedP = null;
 const feed = () => (feedP ??= fetch("/api/feed").then((r) => r.json()).then((d) => d.items ?? []).catch(() => []));
 
@@ -121,10 +127,25 @@ async function renderOverview() {
   $("acct-login").textContent = `@${user.login}`;
 
   const uid = BigInt(user.id);
-  const [all, [linked, pending]] = await Promise.all([
-    bounties(),
-    deployed ? Promise.all([read("walletOf", [uid]), read("pending", [uid])]) : Promise.resolve([ZERO, 0n]),
-  ]);
+  let all, linked, pending;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      [all, [linked, pending]] = await Promise.all([
+        bounties(attempt > 1),
+        deployed ? Promise.all([read("walletOf", [uid]), read("pending", [uid])]) : Promise.resolve([ZERO, 0n]),
+      ]);
+      break;
+    } catch (e) {
+      console.error("overview: reading Arc failed", e);
+      const msg = `Couldn't reach Arc (${esc(e.shortMessage || e.message)}).`;
+      if (attempt >= 4) {
+        $("acct-blurb").innerHTML = `<span class="status err">${msg} <button class="linkish" onclick="location.reload()">Reload</button></span>`;
+        return;
+      }
+      $("acct-blurb").innerHTML = `<span class="muted">${msg} Retrying…</span>`;
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+    }
+  }
   const mine = all.filter((b) => b.awardedTo === uid);
   const awardedTotal = mine.filter((b) => b.status !== "returned").reduce((s, b) => s + b.payout, 0n);
   const hasWallet = linked !== ZERO;
@@ -252,7 +273,7 @@ async function renderActivity(user, mine) {
     prs = (await gh(`search/issues?q=${encodeURIComponent(q)}&per_page=100`)).items;
   } catch {}
 
-  const funded = new Set((await bounties()).map((b) => b.repo));
+  const funded = new Set((await bounties().catch(() => [])).map((b) => b.repo));
   const perDay = new Array(days + 1).fill(0);
   for (const pr of prs) {
     const d = new Date(pr.pull_request?.merged_at ?? pr.closed_at);
@@ -320,9 +341,17 @@ async function renderActivity(user, mine) {
     : `<p class="plist-empty">No payouts yet.</p>`;
 }
 
+const arcDown = (e) => `<p class="pool-empty">Couldn't reach Arc right now (${esc(e.shortMessage || e.message)}). <button class="linkish" onclick="location.reload()">Reload</button></p>`;
+
 async function renderRepos() {
   const el = $("repos");
-  const all = await bounties();
+  let all;
+  try {
+    all = await bounties();
+  } catch (e) {
+    el.innerHTML = arcDown(e);
+    return;
+  }
   const groups = byRepo(all);
   const openCount = all.filter((b) => b.status === "open").length;
   $("repos-count").textContent = `${groups.size} repos · ${openCount} bounties open`;
@@ -360,7 +389,7 @@ async function renderSponsorships() {
     el.innerHTML = `<p class="loading-line">Contract deploying soon.</p>`;
     return;
   }
-  const all = await bounties();
+  const all = await bounties().catch(() => []);
   const mine = (await Promise.all(all.map(async (b) => ({ b, c: await read("contributions", [b.id, account]) })))).filter((x) => x.c > 0n);
   $("spon-num").textContent = String(mine.length).padStart(2, "0");
   $("spon-count").textContent = `${mine.length} funded from ${short(account)}`;
@@ -406,7 +435,13 @@ async function renderSponsorships() {
 
 async function renderBounties() {
   const root = $("repo-cards");
-  const all = await bounties();
+  let all;
+  try {
+    all = await bounties();
+  } catch (e) {
+    root.innerHTML = `<div class="win">${arcDown(e)}</div>`;
+    return;
+  }
   const groups = byRepo(all);
   const openAll = all.filter((b) => b.status === "open");
   $("b-repos").textContent = `${groups.size} repo${groups.size === 1 ? "" : "s"}`;

@@ -1,5 +1,5 @@
 // Shared by the landing page and the app.
-import { createPublicClient, defineChain, formatUnits, http } from "https://esm.sh/viem@2.56.8";
+import { createPublicClient, defineChain, fallback, formatUnits, http } from "https://esm.sh/viem@2.56.8";
 import { abi } from "/abi.js";
 export { abi };
 
@@ -14,8 +14,18 @@ export const chain = defineChain({
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
   rpcUrls: { default: { http: [cfg.rpc] } },
   blockExplorers: { default: { name: "Arcscan", url: cfg.explorer } },
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 });
-export const pub = createPublicClient({ chain, transport: http(cfg.rpc) });
+// Arc's public RPC rate-limits bursts, so: bundle concurrent reads into one Multicall3 call, retry,
+// and fall back to a second provider.
+export const pub = createPublicClient({
+  chain,
+  batch: { multicall: { wait: 16 } },
+  transport: fallback(
+    [cfg.rpc, cfg.rpcFallback].filter(Boolean).map((u) => http(u, { retryCount: 3, retryDelay: 400 })),
+    { rank: false }
+  ),
+});
 export const deployed = Boolean(cfg.contract) && cfg.contract !== ZERO;
 export const tag = cfg.workflowRef.split("@refs/tags/")[1] ?? cfg.workflowRef.split("@")[1];
 
