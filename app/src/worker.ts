@@ -64,6 +64,37 @@ function splitJwt(token: unknown): { signingInput: Hex; signature: Hex } {
   return { signingInput, signature };
 }
 
+
+function renderBadgeSvg(leftText: string, rightText: string): string {
+  const charW = 7;
+  const pad = 9;
+  const leftW = Math.round(leftText.length * charW + pad * 2);
+  const rightW = Math.round(rightText.length * charW + pad * 2);
+  const totalW = leftW + rightW;
+  const h = 20;
+
+  const leftX = Math.round(leftW / 2);
+  const rightX = Math.round(leftW + rightW / 2);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${h}" viewBox="0 0 ${totalW} ${h}" role="img" aria-label="${leftText}: ${rightText}">
+  <title>${leftText}: ${rightText}</title>
+  <style>
+    text {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+    }
+  </style>
+  <rect width="${leftW}" height="${h}" fill="#000000" />
+  <rect x="${leftW}" width="${rightW}" height="${h}" fill="#FFFFFF" stroke="#000000" stroke-width="2" />
+  <rect x="0" y="0" width="${totalW}" height="${h}" fill="none" stroke="#000000" stroke-width="2" />
+  <text x="${leftX}" y="10.5" fill="#FFFFFF">${leftText}</text>
+  <text x="${rightX}" y="10.5" fill="#000000">${rightText}</text>
+</svg>`;
+}
+
 function revertReason(err: unknown): string {
   if (err instanceof BaseError) {
     const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
@@ -219,6 +250,74 @@ export default {
       tag: env.WORKFLOW_REF.split("@refs/tags/")[1] ?? env.WORKFLOW_REF.split("@")[1],
     });
     if (auth) return auth;
+
+    // Embeddable SVG badge: GET /badge/<owner>/<repo>.svg
+    const badgeMatch = url.pathname.match(/^\/badge\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)\.svg$/);
+    if (badgeMatch) {
+      const [, owner, repo] = badgeMatch;
+      const repoFullName = `${owner}/${repo}`;
+      const cacheHeaders = {
+        "content-type": "image/svg+xml; charset=utf-8",
+        "cache-control": "public, max-age=60, s-maxage=60",
+        "access-control-allow-origin": "*",
+      };
+
+      try {
+        if (!env.CONTRACT || env.CONTRACT === ZERO) {
+          const svg = renderBadgeSvg("MergePay", "no open bounties");
+          return new Response(svg, { headers: cacheHeaders });
+        }
+
+        // 1. Look up repository ID from GitHub API
+        const ghRes = await fetch(`https://api.github.com/repos/${repoFullName}`, {
+          headers: {
+            "User-Agent": "MergePay-Badge",
+            Accept: "application/vnd.github+json",
+          },
+        });
+
+        if (!ghRes.ok) {
+          const svg = renderBadgeSvg("MergePay", "no open bounties");
+          return new Response(svg, { headers: cacheHeaders });
+        }
+
+        const ghData = (await ghRes.json()) as { id: number };
+        const repoId = BigInt(ghData.id);
+
+        // 2. Read bounties from contract
+        const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: transport(env) });
+        const [, data] = await pub.readContract({
+          address: getAddress(env.CONTRACT),
+          abi,
+          functionName: "listBounties",
+          args: [0n, 1000n],
+        });
+
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        const openBounties = data.filter((b) => b.repoId === repoId && b.awardedTo === 0n && b.expiry > now);
+
+        let rightText = "no open bounties";
+        if (openBounties.length > 0) {
+          let totalOpen = 0n;
+          for (const b of openBounties) {
+            totalOpen += b.amount;
+          }
+          const formattedUsdc = Number(formatUnits(totalOpen, 18)).toLocaleString(undefined, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          });
+          const count = openBounties.length;
+          rightText = `${formattedUsdc} USDC open · ${count} ${count === 1 ? "bounty" : "bounties"}`;
+        }
+
+        const svg = renderBadgeSvg("MergePay", rightText);
+        return new Response(svg, { headers: cacheHeaders });
+      } catch (err) {
+        console.error("badge error:", err);
+        const svg = renderBadgeSvg("MergePay", "no open bounties");
+        return new Response(svg, { headers: cacheHeaders });
+      }
+    }
 
     if (url.pathname === "/api/me") {
       const me = await currentUser(req, env);
