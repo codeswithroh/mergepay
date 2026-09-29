@@ -766,11 +766,19 @@ $("fund-form").addEventListener("submit", async (ev) => {
     status(st, skel.loader(`Submitted ${txLink(hash)}, waiting for Arc to finalize`));
     const r = await pub.waitForTransactionReceipt({ hash, pollingInterval: 250 });
     if (r.status !== "success") throw new Error("transaction reverted");
+    const badgeMd = `[![MergePay](${origin}/badge/${fundRepo.full_name}.svg)](${origin}/app#bounties)`;
     status(
       st,
-      `${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}. Tell contributors to comment <code>/claim</code> on the issue.`,
+      `${usd(value)} USDC escrowed on ${fundRepo.full_name}#${issue}, final in one block · ${txLink(hash)}. Tell contributors to comment <code>/claim</code> on the issue.<div style="margin-top:8px"><button type="button" class="btn btn-sm" id="copy-badge-btn">Copy badge markdown</button></div>`,
       "ok"
     );
+    const badgeBtn = document.getElementById("copy-badge-btn");
+    if (badgeBtn) {
+      badgeBtn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(badgeMd);
+        toast("Badge markdown copied");
+      });
+    }
     setStep(3, "funded ✔", true);
     await bounties(true);
     rendered.delete("overview");
