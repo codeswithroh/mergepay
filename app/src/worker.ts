@@ -22,6 +22,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { abi } from "./abi";
 import { authConfigured, currentUser, handleAuth, type AuthEnv } from "./auth";
+import { formatBadgeValue, renderBadgeSvg } from "./badge";
 
 interface Env extends AuthEnv {
   ASSETS: Fetcher;
@@ -53,6 +54,16 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
+  });
+
+const svg = (body: string, status = 200, maxAge = 60) =>
+  new Response(body, {
+    status,
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "access-control-allow-origin": "*",
+      "cache-control": `public, max-age=${maxAge}, s-maxage=${maxAge}`,
+    },
   });
 
 function splitJwt(token: unknown): { signingInput: Hex; signature: Hex } {
@@ -215,6 +226,63 @@ export default {
 
     const auth = await handleAuth(req, env);
     if (auth) return auth;
+
+    // SVG badge: GET /badge/<owner>/<repo>.svg or /badge/<owner>/<repo>
+    const badgeMatch = url.pathname.match(/^\/badge\/([^/]+)\/([^/]+?)(?:\.svg)?$/);
+    if (badgeMatch && req.method === "GET") {
+      const owner = badgeMatch[1];
+      const repo = badgeMatch[2];
+      const repoFullName = `${owner}/${repo}`;
+
+      try {
+        if (!env.CONTRACT || env.CONTRACT === ZERO) {
+          return svg(renderBadgeSvg("MergePay", "no open bounties"), 200, 60);
+        }
+
+        // 1. Look up repository ID from GitHub API (or fallback if rate-limited)
+        let repoId: bigint | null = null;
+        try {
+          const ghRes = await fetch(`https://api.github.com/repos/${repoFullName}`, {
+            headers: { "User-Agent": "MergePay-Badge/1.0", Accept: "application/vnd.github+json" },
+          });
+          if (ghRes.ok) {
+            const repoData: any = await ghRes.json();
+            if (repoData?.id) {
+              repoId = BigInt(repoData.id);
+            }
+          }
+        } catch {}
+
+        // 2. Read bounties from contract
+        const pub = createPublicClient({ chain: arc(env.RPC_URL), transport: transport(env) });
+        const [, data, names] = await pub.readContract({
+          address: getAddress(env.CONTRACT),
+          abi,
+          functionName: "listBounties",
+          args: [0n, 1000n],
+        });
+
+        const now = BigInt(Math.floor(Date.now() / 1000));
+        let openBounties = data.filter((b, idx) => {
+          const isOpen = b.awardedTo === 0n && b.expiry > now;
+          if (!isOpen) return false;
+          if (repoId !== null && b.repoId === repoId) return true;
+          if (names && names[idx] && names[idx].toLowerCase() === repoFullName.toLowerCase()) return true;
+          return false;
+        });
+
+        let totalWei = 0n;
+        for (const b of openBounties) {
+          totalWei += b.amount;
+        }
+
+        const valueText = formatBadgeValue(totalWei, openBounties.length);
+        return svg(renderBadgeSvg("MergePay", valueText), 200, 60);
+      } catch (err) {
+        console.error("badge render failed", err);
+        return svg(renderBadgeSvg("MergePay", "no open bounties"), 200, 30);
+      }
+    }
 
     if (url.pathname === "/api/me") {
       const me = await currentUser(req, env);
