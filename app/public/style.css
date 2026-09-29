@@ -630,3 +630,19 @@ footer {
 .acct-id img:not([src]) { background: radial-gradient(#6f6f6f 1px, transparent 1.3px) 0 0 / 4px 4px, #d9d9d9; animation: pulse-dim 1.1s steps(2) infinite; }
 @keyframes pulse-dim { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .acct-id img:not([src]) { animation: none; } }
+
+/* Readability: small text never sits directly on the dotted desk. It goes on a paper card. */
+.desk { background-image: radial-gradient(#adadad 1px, transparent 1.2px); }
+.desk .body {
+  width: fit-content; max-width: 680px;
+  padding: 10px 14px;
+  background: var(--paper);
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.desk .kicker { display: inline-block; padding: 2px 8px; background: var(--paper); border: 2px solid var(--ink); }
+.desk .win .body, .desk .win .kicker { width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; }
+.desk .win .kicker { display: block; }
+.desk > footer > span, .desk footer .mono { background: var(--paper); padding: 2px 6px; }
+.split .body + .stats { margin-top: 20px; }
+.desk .body:empty { display: none; }
