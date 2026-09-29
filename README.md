@@ -51,6 +51,12 @@ The contract then checks, in [`MergePay.sol`](contracts/src/MergePay.sol):
 Then it pays `amount − relayerFee` to the author (or holds it until they link) and pays `relayerFee` to the relayer.
 
 ### 3. Link a wallet (before or after)
+**One click:** in the app, connect a wallet and press **Link wallet**. GitHub asks once for `public_repo`
+and `workflow`. The worker creates `<you>/mergepay-link`, writes the link workflow, dispatches it with your
+wallet, and discards the token. GitHub signs the proof inside that run, exactly as below. MergePay's
+server never vouches for anything itself.
+
+**Or by hand / with your agent:**
 A contributor adds [`examples/link.yml`](examples/link.yml) to a repo **they own** and runs it once.
 The contract requires:
 - `event_name == workflow_dispatch`

@@ -106,6 +106,7 @@ async function connect() {
   wallet = w;
   $("connect").textContent = short(account);
   renderSnippets();
+  updateLinkSteps();
   renderSponsorships();
   return w;
 }
@@ -786,14 +787,72 @@ $("fund-form").addEventListener("submit", async (ev) => {
 // =================================================================================================
 // Wallet tab
 
+// ---- One-click link --------------------------------------------------------------------------
+
+function updateLinkSteps() {
+  if (me) $("link-repo-name").textContent = `${me.login}/mergepay-link`;
+  const ready = Boolean(account);
+  $("ls-1").classList.toggle("done", ready);
+  $("ls-1-text").textContent = ready ? `${short(account)} connected` : "Any Arc wallet. You won't pay gas.";
+  $("ls-connect").textContent = ready ? "Change" : "Connect wallet";
+  const link = $("ls-link");
+  link.setAttribute("aria-disabled", String(!ready));
+  link.href = ready ? `/auth/link?wallet=${account}` : "#wallet";
+}
+$("ls-connect").addEventListener("click", () => connect().catch((e) => toast(e.shortMessage || e.message)));
+$("ls-link").addEventListener("click", (ev) => {
+  if (!account) {
+    ev.preventDefault();
+    toast("Connect the wallet you want paid first");
+  }
+});
+
+/** After /auth/link returns: watch the contract until GitHub's proof lands. */
+async function watchLink() {
+  const q = new URLSearchParams(location.search);
+  const target = q.get("linking"), run = q.get("run"), err = q.get("link_error");
+  if (!target && !err) return;
+  history.replaceState(null, "", `/app${location.hash}`);
+  const box = $("link-progress");
+  if (err) {
+    box.innerHTML = `<p class="status err">Linking didn't finish: ${esc(err)}. <a href="#wallet" onclick="location.reload()">Try again</a>, or use one of the other ways below.</p>`;
+    return;
+  }
+  if (!me) return;
+  $("ls-2").classList.add("busy");
+  box.innerHTML = skel.loader(`GitHub is running the link workflow in ${esc(me.login)}/mergepay-link…`) +
+    `<p class="sub">Usually 20–40 seconds. <a href="${esc(run)}" target="_blank" rel="noopener">Watch it on GitHub ↗</a></p>`;
+  const started = Date.now();
+  while (Date.now() - started < 4 * 60_000) {
+    await new Promise((r) => setTimeout(r, 3000));
+    let w;
+    try {
+      w = await read("walletOf", [BigInt(me.id)]);
+    } catch {
+      continue;
+    }
+    if (w.toLowerCase() === target.toLowerCase()) {
+      $("ls-2").classList.remove("busy");
+      $("ls-2").classList.add("done");
+      box.innerHTML = `<p class="status ok"><b>Linked.</b> GitHub vouched that @${esc(me.login)} controls <a class="mono" href="${cfg.explorer}/address/${w}" target="_blank" rel="noopener">${short(w)}</a>, and the contract recorded it on Arc. Any USDC waiting for you was sent there just now.</p>`;
+      rendered.delete("overview");
+      renderWallet();
+      return;
+    }
+  }
+  $("ls-2").classList.remove("busy");
+  box.innerHTML = `<p class="status err">Still waiting after 4 minutes. <a href="${esc(run)}" target="_blank" rel="noopener">Check the run on GitHub ↗</a>. If it failed, its log says why.</p>`;
+}
+
 async function renderWallet() {
   renderSnippets();
+  updateLinkSteps();
   const out = $("lookup");
   out.innerHTML = skel.loader("Reading your link status on Arc") + skel.rows(2);
   const l = login();
   if (!l) {
     $("w-state").textContent = "not signed in";
-    out.innerHTML = `<div class="empty-box"><b>Who are you on GitHub?</b><p><a href="/auth/login?next=%2Fapp%23wallet">Sign in with GitHub</a> to see your link status. You can still add the workflow on the right.</p></div>`;
+    out.innerHTML = `<div class="empty-box"><b>Who are you on GitHub?</b><p><a href="/auth/login?next=%2Fapp%23wallet">Sign in with GitHub</a> to see your link status, or just use <b>Link in one click</b> on the right. It signs you in too.</p></div>`;
     return;
   }
   try {
@@ -830,3 +889,4 @@ if (cfg.relayer) $("relayer-addr").textContent = ` · relayer ${short(cfg.relaye
 await loadMe();
 setWhoami();
 route();
+watchLink();

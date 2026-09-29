@@ -258,7 +258,7 @@
       <main id="tab-wallet" class="tab" hidden>
         <section class="section">
           <h1 class="h1-sm">Payout wallet</h1>
-          <p class="body">Link your GitHub account to an Arc wallet once. GitHub itself proves it's you: you run one workflow in a repo you own, and the contract records the wallet. Linking can happen before or after a merge. You never need USDC for gas.</p>
+          <p class="body">Link your GitHub account to an Arc wallet once, and every bounty you win lands there automatically. Linking can happen before or after a merge. You never need USDC for gas.</p>
         </section>
         <div class="rule"><span>Status</span><em id="w-state"><i class="ell"></i></em></div>
         <section class="section">
@@ -269,22 +269,32 @@
                 <div id="lookup" class="lookup"><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div><div class="skel-row"><div><span class="skel skel-line " style="width:62%"></span><span class="skel skel-line sm" style="width:38%"></span></div><span class="skel skel-pill"></span></div></div>
               </div>
             </div>
-            <div class="win">
-              <div class="titlebar"><i></i><i></i><span>.github/workflows/mergepay-link.yml</span></div>
+            <div class="win step-win" id="onelink">
+              <div class="titlebar"><i></i><i></i><span>link-wallet.app</span></div>
               <div class="win-body">
-                <ol class="steps">
-                  <li>Pick any repo <b>you own</b>. Your profile repo works.</li>
-                  <li>Add this workflow. Your wallet is filled in once you connect it.</li>
-                  <li><b>Actions → MergePay link → Run workflow.</b></li>
+                <h3 class="win-h">Link in one click</h3>
+                <p class="sub">GitHub has to vouch for the link, so MergePay runs a tiny workflow in a repo of yours (<span class="mono" id="link-repo-name">you/mergepay-link</span>, created if needed) and GitHub signs the proof. The contract checks that signature.</p>
+                <ol class="link-steps">
+                  <li id="ls-1"><span class="n">1</span><div><b>Connect the wallet that should receive USDC</b><p class="muted" id="ls-1-text">Any Arc wallet. You won't pay gas.</p></div><button class="btn btn-sm" id="ls-connect">Connect wallet</button></li>
+                  <li id="ls-2"><span class="n">2</span><div><b>Link it to your GitHub account</b><p class="muted">GitHub asks once for permission to create that public repo and run its workflow. The permission is used right away, then thrown away and never stored.</p></div><a class="btn btn-gh" id="ls-link" aria-disabled="true">Link wallet</a></li>
                 </ol>
-                <label>Your repo<input id="link-repo" placeholder="you/you" autocomplete="off" /></label>
-                <pre class="code"><code id="link-yml"></code></pre>
-                <div class="cta">
-                  <button class="btn btn-gh" data-copy-agent="link">Copy for agent</button>
-                  <a class="btn" id="add-link" target="_blank" rel="noopener">Add to my repo ↗</a>
-                  <button class="btn btn-flat" data-copy="link-yml">Copy YAML</button>
-                </div>
-                <p class="sub agent-note">“Copy for agent” gives Claude Code or Codex a prompt that adds the file, runs it and reports back. Connect your wallet first so the address is filled in.</p>
+                <div id="link-progress"></div>
+
+                <details class="peek other-ways">
+                  <summary>Other ways: add it yourself, or hand it to your coding agent</summary>
+                  <ol class="steps">
+                    <li>Pick any repo <b>you own</b>. Your profile repo works.</li>
+                    <li>Add this workflow. Your wallet is filled in once you connect it.</li>
+                    <li><b>Actions → MergePay link → Run workflow.</b></li>
+                  </ol>
+                  <label>Your repo<input id="link-repo" placeholder="you/you" autocomplete="off" /></label>
+                  <pre class="code"><code id="link-yml"></code></pre>
+                  <div class="cta">
+                    <button class="btn btn-gh" data-copy-agent="link">Copy for agent</button>
+                    <a class="btn" id="add-link" target="_blank" rel="noopener">Add to my repo ↗</a>
+                    <button class="btn btn-flat" data-copy="link-yml">Copy YAML</button>
+                  </div>
+                </details>
               </div>
             </div>
           </div>

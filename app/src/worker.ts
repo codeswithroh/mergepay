@@ -213,7 +213,11 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
 
-    const auth = await handleAuth(req, env);
+    const auth = await handleAuth(req, env, {
+      contract: env.CONTRACT,
+      workflowRepo: env.WORKFLOW_REPO,
+      tag: env.WORKFLOW_REF.split("@refs/tags/")[1] ?? env.WORKFLOW_REF.split("@")[1],
+    });
     if (auth) return auth;
 
     if (url.pathname === "/api/me") {

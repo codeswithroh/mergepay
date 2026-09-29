@@ -646,3 +646,16 @@ footer {
 .desk > footer > span, .desk footer .mono { background: var(--paper); padding: 2px 6px; }
 .split .body + .stats { margin-top: 20px; }
 .desk .body:empty { display: none; }
+
+/* one-click wallet link */
+.link-steps { list-style: none; margin: 8px 0 16px; padding: 0; display: grid; gap: 10px; }
+.link-steps li { display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; border: 2.5px solid var(--ink); background: var(--paper); }
+.link-steps .n { width: 30px; height: 30px; display: grid; place-items: center; border: 2.5px solid var(--ink); font: 800 16px var(--display); }
+.link-steps li.done .n { background: var(--ink); color: var(--paper); font-size: 0; }
+.link-steps li.done .n::after { content: "✓"; font-size: 17px; }
+.link-steps li.busy .n { animation: pulse-dim 0.8s steps(2) infinite; }
+.link-steps p { margin: 2px 0 0; font-size: 13.5px; }
+.link-steps .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.other-ways { margin-top: 18px; padding-top: 14px; border-top: 2px dashed #bbb; }
+.other-ways .steps { margin-top: 12px; }
+@media (max-width: 600px) { .link-steps li { grid-template-columns: 34px 1fr; } .link-steps li .btn { grid-column: 1 / -1; } }
