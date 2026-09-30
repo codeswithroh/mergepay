@@ -8,6 +8,8 @@ export interface AuthEnv {
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
   SESSION_SECRET?: string;
+  /** Public site origin (e.g. https://mergepay.fun) when the site is served through a proxy. */
+  PUBLIC_ORIGIN?: string;
 }
 
 export type Session = { id: number; login: string; avatar: string; exp: number };
@@ -178,6 +180,9 @@ async function runOneClickLink(token: string, login: string, wallet: string, cfg
 export async function handleAuth(req: Request, env: AuthEnv, link?: LinkConfig): Promise<Response | null> {
   const url = new URL(req.url);
   if (!url.pathname.startsWith("/auth/")) return null;
+  // Behind a proxy (Netlify serving mergepay.fun) the worker sees its own workers.dev host, but the
+  // browser, its cookies and GitHub's callback live on the public origin.
+  const site = env.PUBLIC_ORIGIN || url.origin;
   if (!authConfigured(env)) return new Response("GitHub sign-in is not configured on this deployment.", { status: 503 });
 
   // /auth/login           -> identity only, no scopes
@@ -190,7 +195,7 @@ export async function handleAuth(req: Request, env: AuthEnv, link?: LinkConfig):
     const next = isLink ? "/app#wallet" : safeNext(url.searchParams.get("next"));
     const gh = new URL("https://github.com/login/oauth/authorize");
     gh.searchParams.set("client_id", env.GITHUB_CLIENT_ID!);
-    gh.searchParams.set("redirect_uri", `${url.origin}/auth/callback`);
+    gh.searchParams.set("redirect_uri", `${site}/auth/callback`);
     gh.searchParams.set("state", state);
     gh.searchParams.set("allow_signup", "true");
     if (isLink) gh.searchParams.set("scope", "public_repo workflow");
@@ -217,7 +222,7 @@ export async function handleAuth(req: Request, env: AuthEnv, link?: LinkConfig):
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: `${url.origin}/auth/callback`,
+        redirect_uri: `${site}/auth/callback`,
       }),
     });
     const { access_token } = (await tokenRes.json()) as { access_token?: string };

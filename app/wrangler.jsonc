@@ -9,10 +9,6 @@
   // Keep workers.dev on: every installed workflow sends merge proofs to this relayer URL.
   "workers_dev": true,
   "preview_urls": false,
-  "routes": [
-    { "pattern": "mergepay.fun", "custom_domain": true },
-    { "pattern": "www.mergepay.fun", "custom_domain": true }
-  ],
   "kv_namespaces": [{ "binding": "FEED", "id": "fe7baa8405ab458d95a0213f119ed2c0" }],
   // Indexes MergePay events into KV every minute (Arc caps eth_getLogs at a few thousand blocks).
   "triggers": { "crons": ["* * * * *"] },
@@ -21,6 +17,7 @@
     "DEPLOY_BLOCK": "22484520",
     "RPC_URL": "https://rpc.mainnet.arc.io",
     "RPC_FALLBACK": "https://arc.drpc.org",
+    "RELAYER_URL": "https://mergepay.codeswithroh.workers.dev",
     "EXPLORER": "https://explorer.arc.io",
     "GITHUB_CLIENT_ID": "Ov23lisiDyuNgmPizE92",
     "WORKFLOW_REPO": "codeswithroh/mergepay",

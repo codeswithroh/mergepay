@@ -2,6 +2,7 @@ import { createWalletClient, custom, parseUnits, getAddress } from "https://esm.
 import { $, ZERO, abi, cfg, chain, pub, deployed, tag, usd, esc, toast, gh, ago, short, loadBounties, statusPill, fillTitles, fillClaims, skel } from "/common.js";
 
 const origin = location.origin;
+const relayerUrl = cfg.relayerUrl || origin; // where workflows post proofs
 let account = null; // connected wallet
 let wallet = null; // viem wallet client
 
@@ -535,7 +536,7 @@ jobs:
       contents: read
     with:
       contract: "${cfg.contract}"
-      relayer: ${origin}
+      relayer: ${relayerUrl}
 
   claims:
     if: github.event_name != 'pull_request_target' || github.event.action == 'opened'
@@ -544,7 +545,7 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      relayer: ${origin}
+      relayer: ${relayerUrl}
       release_after_days: 7
 `;
 }
@@ -567,7 +568,7 @@ jobs:
     with:
       wallet: \${{ inputs.wallet }}
       contract: "${cfg.contract}"
-      relayer: ${origin}
+      relayer: ${relayerUrl}
 `;
 }
 
