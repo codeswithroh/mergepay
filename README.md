@@ -8,13 +8,13 @@
   <p>
     <a href="https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD"><img src="https://img.shields.io/badge/Arc-mainnet%20%C2%B7%20chain%205042-000?style=flat-square" alt="Live on Arc mainnet"></a>
     <a href="https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD"><img src="https://img.shields.io/badge/contract-0xcff7%E2%80%A69EeD-000?style=flat-square" alt="Contract"></a>
-    <a href="https://mergepay.codeswithroh.workers.dev"><img src="https://img.shields.io/badge/app-live-000?style=flat-square" alt="Live app"></a>
+    <a href="https://mergepay.fun"><img src="https://img.shields.io/badge/app-live-000?style=flat-square" alt="Live app"></a>
     <a href="contracts/test/MergePay.t.sol"><img src="https://img.shields.io/badge/tests-30%20passing-000?style=flat-square" alt="30 tests passing"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000?style=flat-square" alt="MIT license"></a>
   </p>
 
   <p>
-    <a href="https://mergepay.codeswithroh.workers.dev"><b>Live app</b></a> ·
+    <a href="https://mergepay.fun"><b>Live app</b></a> ·
     <a href="#see-it-work">See it work</a> ·
     <a href="#how-it-works">How it works</a> ·
     <a href="#why-arc">Why Arc</a> ·
@@ -42,7 +42,7 @@ This happened on Arc mainnet with a real GitHub token. [Issue #1](https://github
 - Award tx, with GitHub's signature verified on-chain: [`0x5c78…c103`](https://explorer.arc.io/tx/0x5c78366c49509523444fe8e815abcbf6ea9b3b583253c7ca4a3112d3b509c103)
 - Payout tx, delivered when the wallet was linked: [`0x24bb…4eb0`](https://explorer.arc.io/tx/0x24bb35a217cf4102f51acd74f82bbee6a7cdad7e597e0810f7b5cc920f594eb0)
 
-More bounties are open right now in the [app](https://mergepay.codeswithroh.workers.dev/app#bounties), including two on [tastemaker](https://github.com/codeswithroh/tastemaker).
+More bounties are open right now in the [app](https://mergepay.fun/app#bounties), including two on [tastemaker](https://github.com/codeswithroh/tastemaker).
 
 ## Features
 
@@ -100,7 +100,7 @@ sequenceDiagram
 3. **Award.** On merge, [`award.yml`](.github/workflows/award.yml) requests a GitHub OIDC token only for the issue's claimant. [`MergePay.sol`](contracts/src/MergePay.sol) checks the RS256 signature against GitHub's registered key, then checks `iss`, `exp`, `event_name`, `repository_id`, the pinned `job_workflow_ref`, and an audience that binds this contract, the issue and the recipient.
 4. **Link.** A contributor proves "GitHub user #id controls wallet 0x…" through a signed token from a `workflow_dispatch` run in a repo they own. The contract requires `actor_id == repository_owner_id`, so nobody else's repo can speak for them, and a newer `iat` so an old link can't be replayed. The app does this in one click.
 
-The relayer ([`app/src/worker.ts`](app/src/worker.ts)) splits the JWT, simulates the call and pays gas. It can't change who gets paid, because every field that matters is inside GitHub's signature. Anyone can run one.
+The relayer ([`app/src/worker.ts`](app/src/worker.ts)) runs on a Cloudflare Worker at `mergepay.codeswithroh.workers.dev`, which is the URL installed workflows post to. It splits the JWT, simulates the call and pays gas. It can't change who gets paid, because every field that matters is inside GitHub's signature. Anyone can run one.
 
 ## Why Arc
 
@@ -114,7 +114,7 @@ The relayer ([`app/src/worker.ts`](app/src/worker.ts)) splits the JWT, simulates
 ## Quick start
 
 ### Maintainers and sponsors
-1. Open the [Fund tab](https://mergepay.codeswithroh.workers.dev/app#fund) and paste an issue URL.
+1. Open the [Fund tab](https://mergepay.fun/app#fund) and paste an issue URL.
 2. If the repo doesn't have MergePay yet, press **Add to repo** or **Copy for agent**. It's one workflow file:
    ```yaml
    # .github/workflows/mergepay.yml, full version in examples/mergepay.yml
@@ -127,9 +127,9 @@ The relayer ([`app/src/worker.ts`](app/src/worker.ts)) splits the JWT, simulates
 3. Escrow USDC. Contributors comment `/claim`, you merge as usual, and payouts happen on their own.
 
 ### Contributors
-1. Find a bounty on the [Bounties tab](https://mergepay.codeswithroh.workers.dev/app#bounties) and comment `/claim` on the issue.
+1. Find a bounty on the [Bounties tab](https://mergepay.fun/app#bounties) and comment `/claim` on the issue.
 2. Open a PR that says `Fixes #N`. If a coding agent opens it from a bot account, assign the PR to yourself.
-3. [Link a wallet](https://mergepay.codeswithroh.workers.dev/app#wallet) once, before or after the merge. Awards wait in the contract for 180 days.
+3. [Link a wallet](https://mergepay.fun/app#wallet) once, before or after the merge. Awards wait in the contract for 180 days.
 
 ## What you have to trust
 
@@ -150,7 +150,7 @@ The relayer ([`app/src/worker.ts`](app/src/worker.ts)) splits the JWT, simulates
 
 - **Contracts.** Solidity 0.8.30 and Foundry, with hand-written Base64url, JSON-claim and RSA-PKCS#1 libraries on Arc's precompiles.
 - **Workflows.** Reusable GitHub Actions workflows using GitHub's OIDC tokens.
-- **App and relayer.** One Cloudflare Worker serving the site, relaying proofs, indexing events into KV, and handling GitHub sign-in. The frontend is plain HTML and viem with no build step.
+- **App and relayer.** One Cloudflare Worker relays proofs, indexes events into KV and handles GitHub sign-in. [mergepay.fun](https://mergepay.fun) is served by Vercel, which proxies `/api` and `/auth` to that Worker. The frontend is plain HTML and viem with no build step.
 
 ```
 contracts/   MergePay.sol, Base64Url / JsonClaims / RsaSha256 libs, 30 tests, deploy scripts
@@ -193,7 +193,7 @@ cd ../app && npx wrangler secret put RELAYER_KEY && npx wrangler deploy
 
 ## Contributing
 
-MergePay pays for its own issues. Pick a funded one in the [app](https://mergepay.codeswithroh.workers.dev/app#bounties), comment `/claim`, and open a PR that says `Fixes #N`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rest.
+MergePay pays for its own issues. Pick a funded one in the [app](https://mergepay.fun/app#bounties), comment `/claim`, and open a PR that says `Fixes #N`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rest.
 
 ## License
 

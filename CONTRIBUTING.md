@@ -2,9 +2,9 @@
 
 Thanks for helping. MergePay pays for its own issues, so you can earn USDC doing this.
 
-1. Pick a funded issue on the [Bounties tab](https://mergepay.codeswithroh.workers.dev/app#bounties) and comment `/claim` on it. Only the claimant's PR is paid, and a claim with no activity for 7 days is released.
+1. Pick a funded issue on the [Bounties tab](https://mergepay.fun/app#bounties) and comment `/claim` on it. Only the claimant's PR is paid, and a claim with no activity for 7 days is released.
 2. Open a pull request with `Fixes #N` in the description.
-3. [Link a wallet](https://mergepay.codeswithroh.workers.dev/app#wallet) once, before or after the merge.
+3. [Link a wallet](https://mergepay.fun/app#wallet) once, before or after the merge.
 
 ## Before you open the PR
 

@@ -29,5 +29,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.mergepay.fun"
+        }
+      ],
+      "destination": "https://mergepay.fun/:path*",
+      "permanent": true
+    }
   ]
 }
