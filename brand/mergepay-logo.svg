@@ -1,16 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <!-- MergePay mark: a git merge whose target is a coin. Retro 1-bit, hard shadow. -->
-  <rect x="124" y="124" width="820" height="820" rx="150" fill="#000"/>
-  <rect x="80" y="80" width="820" height="820" rx="150" fill="#fff" stroke="#000" stroke-width="48"/>
-  <g transform="translate(-22 -10)">
-  <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M330 300 V700" stroke-width="58"/>
-    <path d="M330 390 C330 490 420 490 506 490" stroke-width="58"/>
-  </g>
-  <circle cx="330" cy="290" r="66" fill="#000"/>
-  <circle cx="330" cy="712" r="66" fill="#000"/>
-  <!-- the coin the branch merges into -->
-  <circle cx="630" cy="490" r="132" fill="#fff" stroke="#000" stroke-width="46"/>
-  <path d="M630 402 V578 M676 434 C660 410 596 404 588 440 C576 494 684 472 674 530 C664 568 598 572 578 544" fill="none" stroke="#000" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect width="820" height="820" x="124" y="124" fill="#000" rx="150"/><rect width="820" height="820" x="80" y="80" fill="#fff" stroke="#000" stroke-width="48" rx="150"/><g transform="translate(-22 -10)"><g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="58" d="M330 300 V700"/><path stroke-width="58" d="M330 390 C330 490 420 490 506 490"/></g><circle cx="330" cy="290" r="66" fill="#000"/><circle cx="330" cy="712" r="66" fill="#000"/><circle cx="630" cy="490" r="132" fill="#fff" stroke="#000" stroke-width="46"/><path fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="30" d="M630 402 V578 M676 434 C660 410 596 404 588 440 C576 494 684 472 674 530 C664 568 598 572 578 544"/></g></svg>
