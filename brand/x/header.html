@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0}
+  .h{width:1500px;height:500px;position:relative;overflow:hidden;background:#e6e6e6 radial-gradient(#a6a6a6 1.3px,transparent 1.6px) 0 0/8px 8px;font-family:"Baloo 2",sans-serif;color:#000}
+  .win{position:absolute;background:#fff;border:5px solid #000;box-shadow:10px 10px 0 #000}
+  .tb{height:38px;display:flex;align-items:center;gap:9px;padding:0 14px;background:#c8c8c8;border-bottom:5px solid #000;font:700 17px "Space Mono",monospace;position:relative}
+  .tb i{width:15px;height:15px;border:3.5px solid #000;border-radius:50%;background:#fff}
+  .tb span{position:absolute;left:50%;transform:translateX(-50%)}
+  /* main headline window: centre-right, clear of the avatar (bottom-left) */
+  .main{left:470px;top:62px;width:640px}
+  .main .b{padding:22px 30px 24px}
+  .main h1{margin:0;font:800 74px/0.92 "Baloo 2";letter-spacing:-.02em}
+  .cur{display:inline-block;width:.38em;height:.74em;background:#000;margin-left:.06em;vertical-align:-.03em}
+  .main p{margin:14px 0 0;font:700 21px "Space Mono",monospace}
+  /* merge.log window, far right */
+  .log{left:1150px;top:110px;width:300px}
+  .log ol{list-style:none;margin:0;padding:12px 16px;font:400 15px/1.5 "Space Mono",monospace}
+  .log li{display:flex;gap:10px;padding:3px 0;border-bottom:2px dashed #bbb}
+  .log li:last-child{border:0}
+  .log time{color:#555;flex:none}
+  .log b.on{background:#000;color:#fff;padding:0 5px}
+  /* stamp */
+  .stamp{position:absolute;left:470px;bottom:44px;display:flex;gap:14px}
+  .chip{background:#fff;border:4px solid #000;box-shadow:5px 5px 0 #000;padding:4px 14px;font:700 19px "Space Mono",monospace}
+  .chip.dark{background:#000;color:#fff}
+  /* coin + merge glyph, top-left decoration (above where the avatar sits) */
+  .glyph{position:absolute;left:70px;top:36px}
+</style></head><body>
+<div class="h">
+  <svg class="glyph" viewBox="0 0 1024 1024" width="230" height="230">
+    <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round"><path d="M330 290 V734" stroke-width="64"/><path d="M330 400 C330 512 430 512 520 512" stroke-width="64"/></g>
+    <circle cx="330" cy="280" r="74"/><circle cx="330" cy="744" r="74"/>
+    <circle cx="684" cy="526" r="160"/><circle cx="668" cy="512" r="160" fill="#fff" stroke="#000" stroke-width="52"/>
+    <path d="M668 406 V618 M724 444 C705 415 627 408 617 452 C603 517 733 491 721 561 C709 607 629 612 605 578" fill="none" stroke="#000" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="win main">
+    <div class="tb"><i></i><i></i><span>mergepay.app</span></div>
+    <div class="b">
+      <h1>Merge the PR.<br>Get paid in USDC<span class="cur"></span></h1>
+      <p>GitHub signs the proof. Arc pays the author.</p>
+    </div>
+  </div>
+  <div class="win log">
+    <div class="tb"><i></i><i></i><span>merge.log</span></div>
+    <ol>
+      <li><time>t+0s</time><b>PR merged</b></li>
+      <li><time>t+3s</time><b>GitHub signs</b></li>
+      <li><time>t+4s</time><b>Arc verifies</b></li>
+      <li><time>t+10s</time><b class="on">USDC paid ✔</b></li>
+    </ol>
+  </div>
+  <div class="stamp"><span class="chip dark">● LIVE ON ARC MAINNET</span><span class="chip">mergepay.fun</span></div>
+</div></body></html>
