@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;background:#000}
+  .a{width:1000px;height:1000px;background:#000;display:grid;place-items:center;position:relative;overflow:hidden}
+  /* faint dither ring so the black square isn't flat */
+  .a::before{content:"";position:absolute;inset:0;background:radial-gradient(#2a2a2a 2.2px,transparent 2.6px) 0 0/22px 22px;
+    -webkit-mask:radial-gradient(circle at 50% 50%, transparent 0 330px, #000 331px 520px, transparent 521px);mask:radial-gradient(circle at 50% 50%, transparent 0 330px, #000 331px 520px, transparent 521px)}
+</style></head><body>
+<div class="a">
+<svg viewBox="0 0 1024 1024" width="700" height="700" style="position:relative">
+  <g transform="translate(-60 0)">
+    <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M330 290 V734" stroke-width="64"/>
+      <path d="M330 400 C330 512 430 512 520 512" stroke-width="64"/>
+    </g>
+    <circle cx="330" cy="280" r="74" fill="#fff"/>
+    <circle cx="330" cy="744" r="74" fill="#fff"/>
+    <!-- coin with hard offset shadow -->
+    <circle cx="684" cy="526" r="160" fill="#555"/>
+    <circle cx="668" cy="512" r="160" fill="#000" stroke="#fff" stroke-width="52"/>
+    <path d="M668 406 V618 M724 444 C705 415 627 408 617 452 C603 517 733 491 721 561 C709 607 629 612 605 578" fill="none" stroke="#fff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
+</div></body></html>

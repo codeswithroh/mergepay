@@ -25,6 +25,7 @@ import { authConfigured, currentUser, handleAuth, type AuthEnv } from "./auth";
 import { formatBadgeValue, renderBadgeSvg } from "./badge";
 
 interface Env extends AuthEnv {
+  RELAYER_URL?: string;
   ASSETS: Fetcher;
   FEED: KVNamespace;
   CONTRACT: string;
@@ -224,7 +225,18 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
 
-    const auth = await handleAuth(req, env);
+    // Once the site lives on PUBLIC_ORIGIN, send page visits on workers.dev there. The relayer API
+    // and /auth (which the proxy forwards here) stay put.
+    if (env.PUBLIC_ORIGIN && req.method === "GET" && !url.pathname.startsWith("/api/") && !url.pathname.startsWith("/auth/") && !url.pathname.startsWith("/badge/")) {
+      const pub = new URL(env.PUBLIC_ORIGIN);
+      if (url.host !== pub.host) return Response.redirect(`${pub.origin}${url.pathname}${url.search}`, 301);
+    }
+
+    const auth = await handleAuth(req, env, {
+      contract: env.CONTRACT,
+      workflowRepo: env.WORKFLOW_REPO,
+      tag: env.WORKFLOW_REF.split("@refs/tags/")[1] ?? env.WORKFLOW_REF.split("@")[1],
+    });
     if (auth) return auth;
 
     // SVG badge: GET /badge/<owner>/<repo>.svg or /badge/<owner>/<repo>
@@ -332,6 +344,8 @@ export default {
         chainId: 5042,
         rpc: env.RPC_URL,
         rpcFallback: env.RPC_FALLBACK ?? null,
+        // Workflows post merge proofs here. Stays on workers.dev even when the site moves.
+        relayerUrl: env.RELAYER_URL || url.origin,
         explorer: env.EXPLORER,
         workflowRepo: env.WORKFLOW_REPO,
         workflowRef: env.WORKFLOW_REF,

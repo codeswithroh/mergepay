@@ -17,5 +17,5 @@ MergePay provides an embeddable SVG badge that repository maintainers can add di
 ## Example Markdown for README
 
 ```markdown
-[![MergePay Bounties](https://mergepay.codeswithroh.workers.dev/badge/codeswithroh/mergepay.svg)](https://mergepay.codeswithroh.workers.dev/app#bounties)
+[![MergePay Bounties](https://mergepay.fun/badge/codeswithroh/mergepay.svg)](https://mergepay.fun/app#bounties)
 ```

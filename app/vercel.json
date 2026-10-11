@@ -1,0 +1,50 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/badge/:path*",
+      "destination": "https://mergepay.codeswithroh.workers.dev/badge/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://mergepay.codeswithroh.workers.dev/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://mergepay.codeswithroh.workers.dev/auth/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.mergepay.fun"
+        }
+      ],
+      "destination": "https://mergepay.fun/:path*",
+      "permanent": true
+    }
+  ]
+}

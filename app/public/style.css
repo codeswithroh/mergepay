@@ -630,3 +630,32 @@ footer {
 .acct-id img:not([src]) { background: radial-gradient(#6f6f6f 1px, transparent 1.3px) 0 0 / 4px 4px, #d9d9d9; animation: pulse-dim 1.1s steps(2) infinite; }
 @keyframes pulse-dim { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .acct-id img:not([src]) { animation: none; } }
+
+/* Readability: small text never sits directly on the dotted desk. It goes on a paper card. */
+.desk { background-image: radial-gradient(#adadad 1px, transparent 1.2px); }
+.desk .body {
+  width: fit-content; max-width: 680px;
+  padding: 10px 14px;
+  background: var(--paper);
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.desk .kicker { display: inline-block; padding: 2px 8px; background: var(--paper); border: 2px solid var(--ink); }
+.desk .win .body, .desk .win .kicker { width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; }
+.desk .win .kicker { display: block; }
+.desk > footer > span, .desk footer .mono { background: var(--paper); padding: 2px 6px; }
+.split .body + .stats { margin-top: 20px; }
+.desk .body:empty { display: none; }
+
+/* one-click wallet link */
+.link-steps { list-style: none; margin: 8px 0 16px; padding: 0; display: grid; gap: 10px; }
+.link-steps li { display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; border: 2.5px solid var(--ink); background: var(--paper); }
+.link-steps .n { width: 30px; height: 30px; display: grid; place-items: center; border: 2.5px solid var(--ink); font: 800 16px var(--display); }
+.link-steps li.done .n { background: var(--ink); color: var(--paper); font-size: 0; }
+.link-steps li.done .n::after { content: "✓"; font-size: 17px; }
+.link-steps li.busy .n { animation: pulse-dim 0.8s steps(2) infinite; }
+.link-steps p { margin: 2px 0 0; font-size: 13.5px; }
+.link-steps .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.other-ways { margin-top: 18px; padding-top: 14px; border-top: 2px dashed #bbb; }
+.other-ways .steps { margin-top: 12px; }
+@media (max-width: 600px) { .link-steps li { grid-template-columns: 34px 1fr; } .link-steps li .btn { grid-column: 1 / -1; } }
