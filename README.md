@@ -126,6 +126,8 @@ The relayer ([`app/src/worker.ts`](app/src/worker.ts)) runs on a Cloudflare Work
    ```
 3. Escrow USDC. Contributors comment `/claim`, you merge as usual, and payouts happen on their own.
 
+Optional: [`examples/mergepay-require-checks.yml`](examples/mergepay-require-checks.yml) is the same file with one extra read-only job, so a bounty is only awarded when the checks you name passed on the merged pull request. It changes nothing in `award.yml` or the contract.
+
 ### Contributors
 1. Find a bounty on the [Bounties tab](https://mergepay.fun/app#bounties) and comment `/claim` on the issue.
 2. Open a PR that says `Fixes #N`. If a coding agent opens it from a bot account, assign the PR to yourself.

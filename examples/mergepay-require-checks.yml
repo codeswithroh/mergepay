@@ -1,0 +1,54 @@
+# .github/workflows/mergepay.yml in the repo whose issues carry bounties: the same as examples/mergepay.yml,
+# with one optional job in front of the award. A maintainer can merge with a red build; with this file the
+# bounty is only awarded when the checks named below really passed on the pull request's head commit.
+#
+# The extra job reads GitHub's record of the commit and nothing else: it never checks out PR code, needs no
+# secret and no id-token, and PR text only reaches it through the action's own env. It is repo-side and
+# opt-in: award.yml and the contract are unchanged, so it adds no new trust for funders. A repository that
+# removes the job is back to examples/mergepay.yml.
+name: MergePay
+on:
+  pull_request_target:
+    types: [opened, closed]
+  issue_comment:
+    types: [created]      # /claim, /unclaim
+  schedule:
+    - cron: "17 3 * * *"  # release claims idle for 7 days
+  workflow_dispatch:
+
+jobs:
+  knos-verify:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: read
+      statuses: read
+      pull-requests: read
+    steps:
+      - uses: drexthealpha/Knos/.github/actions/knos-verify@v0.3.15
+        with:
+          checks: test          # the check names that must have passed, as GitHub shows them (comma separated)
+
+  award:
+    needs: knos-verify      # a failed or skipped verification means no award; fix the checks and re-run this job
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged
+    uses: codeswithroh/mergepay/.github/workflows/award.yml@v1
+    permissions:
+      id-token: write       # GitHub signs the merge proof
+      pull-requests: write  # payout comment
+      issues: write
+      contents: read
+    with:
+      contract: "0xYOUR_MERGEPAY_ADDRESS"
+      relayer: https://mergepay.codeswithroh.workers.dev
+
+  claims:
+    if: github.event_name != 'pull_request_target' || github.event.action == 'opened'
+    uses: codeswithroh/mergepay/.github/workflows/claims.yml@v1
+    permissions:
+      issues: write
+      pull-requests: write
+    with:
+      relayer: https://mergepay.codeswithroh.workers.dev
+      release_after_days: 7
