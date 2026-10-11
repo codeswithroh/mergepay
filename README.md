@@ -9,6 +9,7 @@
     <a href="https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD"><img src="https://img.shields.io/badge/Arc-mainnet%20%C2%B7%20chain%205042-000?style=flat-square" alt="Live on Arc mainnet"></a>
     <a href="https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD"><img src="https://img.shields.io/badge/contract-0xcff7%E2%80%A69EeD-000?style=flat-square" alt="Contract"></a>
     <a href="https://mergepay.fun"><img src="https://img.shields.io/badge/app-live-000?style=flat-square" alt="Live app"></a>
+    <a href="https://mergepay.fun/app#bounties"><img src="https://mergepay.fun/badge/codeswithroh/mergepay.svg" alt="Open MergePay bounties"></a>
     <a href="contracts/test/MergePay.t.sol"><img src="https://img.shields.io/badge/tests-30%20passing-000?style=flat-square" alt="30 tests passing"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000?style=flat-square" alt="MIT license"></a>
   </p>

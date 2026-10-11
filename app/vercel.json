@@ -7,6 +7,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/badge/:path*",
+      "destination": "https://mergepay.codeswithroh.workers.dev/badge/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://mergepay.codeswithroh.workers.dev/api/:path*"
     },
