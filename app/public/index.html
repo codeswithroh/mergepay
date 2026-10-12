@@ -3,17 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MergePay: every merged PR gets paid</title>
-  <meta name="description" content="USDC bounties on GitHub issues, paid on merge. GitHub's OIDC signature is verified on-chain on Arc — no bots, no backend, no trusted keys." />
-  <meta property="og:title" content="MergePay: every merged PR gets paid" />
-  <meta property="og:description" content="USDC bounties on GitHub issues, paid on merge. GitHub's signature verified on-chain on Arc." />
+  <title>MergePay: USDC bounties for GitHub issues, paid on merge</title>
+  <meta name="description" content="Put USDC on any GitHub issue. When the pull request that fixes it is merged, GitHub signs the merge, a contract on Arc verifies the signature and pays the author in about 10 seconds. No middleman." />
+  <meta name="keywords" content="GitHub bounties, open source bounties, USDC, pay contributors, bug bounty, Arc, Circle, crypto payouts, GitHub Actions, OIDC, paid on merge" />
+  <meta name="author" content="Rohit Purkait" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#c8c8c8" />
   <link rel="icon" href="/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/logo-512.png" />
+  <link rel="canonical" href="https://mergepay.fun/" />
+  <meta property="og:type" content="website" />
   <meta property="og:site_name" content="MergePay" />
   <meta property="og:url" content="https://mergepay.fun/" />
-  <meta property="og:image" content="https://mergepay.fun/logo-512.png" />
-  <meta name="twitter:card" content="summary" />
-  <link rel="canonical" href="https://mergepay.fun/" />
+  <meta property="og:title" content="MergePay: every merged PR gets paid in USDC" />
+  <meta property="og:description" content="USDC bounties on GitHub issues. GitHub signs the merge, Arc verifies it on-chain and pays the author in about 10 seconds." />
+  <meta property="og:image" content="https://mergepay.fun/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="MergePay: merge the PR, get paid in USDC. Live on Arc mainnet." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:creator" content="@codeswithroh" />
+  <meta name="twitter:title" content="MergePay: every merged PR gets paid in USDC" />
+  <meta name="twitter:description" content="USDC bounties on GitHub issues. GitHub signs the merge, Arc verifies it on-chain and pays in about 10 seconds." />
+  <meta name="twitter:image" content="https://mergepay.fun/og.png" />
+  <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "MergePay", "url": "https://mergepay.fun/", "applicationCategory": "DeveloperApplication", "operatingSystem": "Web", "description": "USDC bounties on GitHub issues, paid on merge. A GitHub Actions OIDC token is verified on-chain on Arc and the contract pays the pull request author.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "image": "https://mergepay.fun/og.png", "author": {"@type": "Person", "name": "Rohit Purkait", "url": "https://github.com/codeswithroh", "sameAs": ["https://x.com/codeswithroh", "https://github.com/codeswithroh", "https://codeswithroh.online"]}, "sameAs": ["https://github.com/codeswithroh/mergepay"]}, {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Who holds the money?", "acceptedAnswer": {"@type": "Answer", "text": "The MergePay contract on Arc. We never custody funds. It pays out only on a valid GitHub-signed merge proof, or refunds funders after the deadline."}}, {"@type": "Question", "name": "Can someone fake a merge?", "acceptedAnswer": {"@type": "Answer", "text": "They'd need GitHub's private signing key. The contract checks the RS256 signature, the repo ID, the event, the pinned workflow and the recipient before paying a cent."}}, {"@type": "Question", "name": "Do contributors need crypto?", "acceptedAnswer": {"@type": "Answer", "text": "Only a wallet address. Gas is paid by the relayer and reimbursed from the bounty, so a contributor never needs a balance."}}, {"@type": "Question", "name": "What if nobody fixes it?", "acceptedAnswer": {"@type": "Answer", "text": "After the expiry you chose, every funder can reclaim exactly what they put in, straight from the contract."}}, {"@type": "Question", "name": "Can two people race for one bounty?", "acceptedAnswer": {"@type": "Answer", "text": "No. The first person to comment /claim gets the issue, and only their merged PR is paid. Other PRs get an automatic heads-up that they won't be paid. If the claimant goes quiet for 7 days (no PR, commits or comments), the claim is released for someone else."}}, {"@type": "Question", "name": "My coding agent opens the PRs. Who gets paid?", "acceptedAnswer": {"@type": "Answer", "text": "You do. If the agent opens the PR under your account, you're the author. If it opens the PR from its own bot account (Copilot, Claude and others can), the payout goes to the human the PR is assigned to, as long as that's the person who claimed the issue. MergePay never takes a wallet address from PR text an agent wrote, so a prompt injection can't redirect the money."}}, {"@type": "Question", "name": "What if the winner never claims?", "acceptedAnswer": {"@type": "Answer", "text": "The award waits 180 days for them to link a wallet. After that, anyone can send it back to the funders, split by what each put in. Winners who link in time are never affected."}}, {"@type": "Question", "name": "What does it cost?", "acceptedAnswer": {"@type": "Answer", "text": "No platform fee. Each award costs about $0.016 in gas on Arc, covered by a small relayer fee the funder sets. The default is $0.03."}}, {"@type": "Question", "name": "What do I have to trust?", "acceptedAnswer": {"@type": "Answer", "text": "GitHub's signing keys (registered on-chain and checkable against GitHub's public JWKS), and the maintainers' merge decisions. Everything else is code you can read."}}]}]</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -311,6 +324,12 @@
           <a href="https://github.com/codeswithroh/mergepay" target="_blank" rel="noopener">GitHub</a>
           <a href="https://arc.io" target="_blank" rel="noopener">Arc</a>
           <a id="contract-foot" target="_blank" rel="noopener">Contract</a>
+        </div>
+        <div class="footer-social">
+          <span class="mono">BUILT BY ROHIT PURKAIT</span>
+          <a href="https://x.com/codeswithroh" target="_blank" rel="noopener me">X / Twitter @codeswithroh</a>
+          <a href="https://github.com/codeswithroh" target="_blank" rel="noopener me">GitHub @codeswithroh</a>
+          <a href="https://codeswithroh.online" target="_blank" rel="noopener me">codeswithroh.online</a>
         </div>
         <p class="fine">MergePay is open-source software running on Arc mainnet. Bounties are held by a smart contract, not by any company. Smart contracts carry risk. Fund only what you're comfortable escrowing. Not affiliated with GitHub or Circle.</p>
       </footer>

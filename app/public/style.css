@@ -300,6 +300,11 @@ footer {
 .footer-links a { text-decoration: none; }
 .footer-links a:hover { text-decoration: underline; }
 .footer-links .mono { margin-right: auto; font-weight: 700; }
+.footer-social { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding-top: 12px; border-top: 2px dashed #bbb; font: 700 13px var(--mono); }
+.footer-social .mono { margin-right: auto; }
+.footer-social a { text-decoration: none; background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 3px 10px; }
+.footer-social a:hover { background: var(--ink); color: var(--paper); }
+.footer-social-inline { font: 400 12px var(--mono); }
 .fine { margin: 0; max-width: 760px; padding-top: 12px; border-top: 2px dashed #bbb; font: 400 12px/1.6 var(--mono); color: #333; }
 
 /* app page header */

@@ -1,0 +1,8 @@
+# MergePay
+
+> USDC bounties on GitHub issues, paid on merge. Anyone escrows USDC on a GitHub issue; when the pull request that fixes it is merged, a pinned GitHub Action gets a GitHub-signed OIDC token, and a smart contract on Arc mainnet verifies GitHub's RSA signature on-chain and pays the author in about 10 seconds. No middleman holds the money.
+
+- [App](https://mergepay.fun/app): browse funded issues, fund a bounty, link a payout wallet
+- [Source code](https://github.com/codeswithroh/mergepay): contracts, GitHub workflows, relayer
+- [Contract on Arc mainnet](https://explorer.arc.io/address/0xcff79B144833b36ca53b310C1Ad7854AF9Ff9EeD)
+- Built by Rohit Purkait: [X](https://x.com/codeswithroh), [GitHub](https://github.com/codeswithroh), [Website](https://codeswithroh.online)
