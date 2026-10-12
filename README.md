@@ -126,6 +126,14 @@ The relayer ([`app/src/worker.ts`](app/src/worker.ts)) runs on a Cloudflare Work
        uses: codeswithroh/mergepay/.github/workflows/claims.yml@v1
    ```
 3. Escrow USDC. Contributors comment `/claim`, you merge as usual, and payouts happen on their own.
+4. **Public repos, from Nov 2, 2026:** GitHub blocks `pull_request_target` unless the repo has an Actions event policy that allows it ([details](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/actions-policies/workflow-execution-protections)). Allow it for `mergepay.yml` once, under **Settings → Actions → Policies**, or with:
+   ```bash
+   gh api -X POST repos/OWNER/REPO/actions/policies --input - <<'JSON'
+   {"name":"MergePay payouts","enforcement":"active",
+    "conditions":{"workflow_path":{"include":[".github/workflows/mergepay.yml"],"exclude":[]}},
+    "rules":[{"type":"restrict_action_events","parameters":{"allowed_events":["pull_request_target","issue_comment","schedule","workflow_dispatch"]}}]}
+   JSON
+   ```
 
 ### Contributors
 1. Find a bounty on the [Bounties tab](https://mergepay.fun/app#bounties) and comment `/claim` on the issue.
