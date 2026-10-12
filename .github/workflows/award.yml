@@ -49,7 +49,8 @@ jobs:
             --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' || true)
           # Keywords in the body too ("Fixes #12"), in case the link was made before the merge.
           keyword=$(printf '%s' "${BODY:-}" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) +#[0-9]+' | grep -oE '[0-9]+' || true)
-          issues=$(printf '%s\n%s\n' "$linked" "$keyword" | grep -E '^[0-9]+$' | sort -un | tr '\n' ' ')
+          # `|| true`: a merged PR that closes no issue is normal (docs, chores), not a failure.
+          issues=$(printf '%s\n%s\n' "$linked" "$keyword" | { grep -E '^[0-9]+$' || true; } | sort -un | tr '\n' ' ')
           echo "issues=$issues" >> "$GITHUB_OUTPUT"
           echo "Closes: ${issues:-none}"
 
